@@ -192,7 +192,7 @@ bool RealLidarDriver::start_motor(std::string user_mode_pref,
   // ------------------------------------------------------------------------
   if (profile_.protocol == ProtocolType::NEW_TYPE) {
     drv_->setMotorSpeed(target_rpm);
-    std::cout << "[Driver] Starting S-series motor (warm-up 1s)..."
+    std::cout << "[Driver] Starting a lidar with new protocol (warm-up 1s)..."
               << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
@@ -254,16 +254,16 @@ bool RealLidarDriver::start_motor(std::string user_mode_pref,
       }
       return true;
     }
+  } else {
+    // ------------------------------------------------------------------------
+    // Strategy B: Old-Type (A-Series Legacy)
+    // ------------------------------------------------------------------------
+    drv_->setMotorSpeed(600);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    profile_.active_mode = "Standard";
+    profile_.hw_max_distance = 12.0f; // Legacy default.
   }
-
-  // ------------------------------------------------------------------------
-  // Strategy B: Old-Type (A-Series Legacy)
-  // ------------------------------------------------------------------------
-  drv_->setMotorSpeed(600);
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-  profile_.active_mode = "Standard";
-  profile_.hw_max_distance = 12.0f; // Legacy default.
 
   return SL_IS_OK(drv_->startScan(0, 1));
 }
