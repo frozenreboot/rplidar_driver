@@ -50,31 +50,108 @@ Note:
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch_ros.actions import ComposableNodeContainer
+from launch.conditions import IfCondition
+from launch_ros.actions import (
+    ComposableNodeContainer,
+    PushRosNamespace,
+    LoadComposableNodes
+)
 from launch_ros.descriptions import ComposableNode
+from launch.actions import DeclareLaunchArgument, GroupAction
+from launch.substitutions import LaunchConfiguration, PythonExpression
 
 
 def generate_launch_description():
     share_dir = get_package_share_directory("rplidar_ros2_driver")
     params_file = os.path.join(share_dir, "param", "rplidar.yaml")
 
-    # 1. component definition
+    namespace_arg = DeclareLaunchArgument(
+        "namespace",
+        default_value="",
+        description="Namespace of the ROS node, and its topics, services etc.",
+    )
+    node_name_arg = DeclareLaunchArgument(
+        "node_name",
+        default_value="rplidar_node",
+        description="Name of the ROS node, can be e.g. front_c1_node",
+    )
+    output_arg = DeclareLaunchArgument(
+        "output",
+        default_value="screen",
+        description="Output mode of the node.",
+    )
+    params_fullpath_arg = DeclareLaunchArgument(
+        "params_fullpath",
+        default_value=[params_file],
+        description="OS specific full path of the configuration YAML file",
+    )
+    provide_a_container_arg = DeclareLaunchArgument(
+        "provide_a_container",
+        default_value="True",
+        description="Whether to use rplidar_container or the user provided " \
+        "container with the [container_name] param",
+    )
+    container_name_arg = DeclareLaunchArgument(
+        "container_name",
+        default_value="rplidar_container",
+        description="User provided ComposableNodeContainer name. Send the " \
+        "[namespace] separately if required. e.g. If running the nav2 " \
+        "within a container: '/ns/nav2_cont', set this to 'nav2_cont'",
+    )
+    component_name_arg = DeclareLaunchArgument(
+        "component_name",
+        default_value="rplidar_node",
+        description="Node name of the composable rplidar node",
+    )
+
+    provide_a_container = LaunchConfiguration("provide_a_container")
+    namespace = LaunchConfiguration("namespace")
+    container_name = LaunchConfiguration("container_name")
+    component_name = LaunchConfiguration("component_name")
+    container_name_full = (namespace, '/', container_name)
+
     rplidar_component = ComposableNode(
         package="rplidar_ros2_driver",
         plugin="RPlidarNode",  # name of macro-registered c++
-        name="rplidar_node",
-        parameters=[params_file],
+        name=component_name,
+        namespace=namespace,
+        parameters=[LaunchConfiguration("params_fullpath")],
         extra_arguments=[{"use_intra_process_comms": True}],  # Zero-Copy enabled
     )
 
-    # 2. container definition
     container = ComposableNodeContainer(
-        name="rplidar_container",
-        namespace="",
+        namespace=namespace,
+        name=container_name,
         package="rclcpp_components",
         executable="component_container",
         composable_node_descriptions=[rplidar_component],
         output="screen",
     )
 
-    return LaunchDescription([container])
+    load_composable_node_wo_container = GroupAction(
+        condition=IfCondition(PythonExpression(['not ', provide_a_container])),
+        actions=[
+            LoadComposableNodes(
+                target_container=container_name_full,
+                composable_node_descriptions=[rplidar_component],
+            ),
+        ],
+    )
+
+    load_composable_node_w_container = GroupAction(
+        condition=IfCondition(provide_a_container),
+        actions=[container],
+    )
+
+    ld = LaunchDescription()
+    ld.add_action(namespace_arg)
+    ld.add_action(node_name_arg)
+    ld.add_action(output_arg)
+    ld.add_action(params_fullpath_arg)
+    ld.add_action(provide_a_container_arg)
+    ld.add_action(container_name_arg)
+    ld.add_action(component_name_arg)
+    ld.add_action(load_composable_node_wo_container)
+    ld.add_action(load_composable_node_w_container)
+
+    return ld
