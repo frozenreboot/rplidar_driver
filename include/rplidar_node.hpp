@@ -340,6 +340,9 @@ private:
     /// Maximum range (in meters) to be used when publishing scans.
     float max_distance = 0.0f;
 
+    /// Angle offset in degrees to compensate for hardware zero-point mismatch.
+    double angle_offset = 0.0;
+
     /// Number of connection retries before giving up.
     int max_retries = 3;
 

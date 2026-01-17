@@ -184,6 +184,11 @@ def generate_launch_description() -> LaunchDescription:
         description="Allows users to directly read the angle values reported " \
         "by the hardware. Use it together with use_intensities:=true",
     )
+    angle_offset_arg = DeclareLaunchArgument(
+        "angle_offset",
+        default_value="0.0",
+        description="Angle offset in degrees (e.g., 180.0 for A1 fix). Overrides YAML.",
+    )
     # -------------------------------------------------------------------------
     # 2. Lifecycle Node Definition
     # -------------------------------------------------------------------------
@@ -229,6 +234,8 @@ def generate_launch_description() -> LaunchDescription:
                 LaunchConfiguration("use_intensities"),
                 "intensities_as_angles":
                 LaunchConfiguration("intensities_as_angles"),
+                "angle_offset":
+                LaunchConfiguration("angle_offset")
             },
         ],
     )
@@ -299,6 +306,7 @@ def generate_launch_description() -> LaunchDescription:
             interpolated_rays_arg,
             use_intensities_arg,
             intensities_as_angles_arg,
+            angle_offset_arg,
 
             driver_node,
             configure_event,

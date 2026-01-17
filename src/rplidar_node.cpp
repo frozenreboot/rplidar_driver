@@ -281,6 +281,7 @@ void RPlidarNode::init_parameters() {
   init_param("max_retries", params_.max_retries);
   init_param("use_intensities", params_.use_intensities);
   init_param("intensities_as_angles", params_.intensities_as_angles);
+  init_param("angle_offset", params_.angle_offset);
 
   // Dynamic ones, don't forget to check them in the callback
   init_param("scan_mode", params_.scan_mode);
@@ -593,6 +594,12 @@ void RPlidarNode::publish_scan(
     // front. Instead, those angles are appended to the end of the array.
     // However, the angle order is usually preserved. Unfortunately, sometimes
     // The order is fully corrupted, so we need to sort them later.
+
+    angle_rad += params_.angle_offset;
+    if (angle_rad >= TWO_PI)
+      angle_rad -= TWO_PI;
+    if (angle_rad < 0.0f)
+      angle_rad += TWO_PI;
 
     if (node.dist_mm_q2 == 0) {
       if (params_.interpolated_rays) {
