@@ -237,7 +237,7 @@ private:
    *
    * @param nodes         Measurement nodes acquired from the driver.
    * @param time          Timestamp of the scan.
-   * @param scan_duration Duration of the scan in seconds.
+   * @param scan_duration Duration of the scan.
    */
   void publish_scan(
       const std::vector<sl_lidar_response_measurement_node_hq_t> &nodes,
@@ -256,10 +256,13 @@ private:
   /**
    * @brief Helper to solve abstract ray intersections with the
    *
-   * This method populates the diagnostic status with the current health
-   * information obtained from the driver and internal state.
+   * Basically converts two consecutive original readings to a line segment, and
+   * looks for the intersection point with a fixed angle.
    *
-   * @param stat Diagnostic status wrapper to be filled.
+   * @param p1 First point from the lidar measurement array
+   * @param p2 Second point from the lidar measurement array, must a be bigger
+   *           angle
+   * @param eps A small value like EPSILON to check |d| > 0, default: 1e-9
    */
 
   // ---------------------------------------------------------------------
