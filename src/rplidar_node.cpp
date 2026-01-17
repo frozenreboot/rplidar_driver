@@ -287,7 +287,6 @@ void RPlidarNode::init_parameters() {
   init_param("scan_mode", params_.scan_mode);
   init_param("rpm", params_.rpm);
   init_param("publish_point_cloud", params_.publish_point_cloud);
-  init_param("publish_laser_scan", params_.publish_laser_scan);
   init_param("interpolated_rays", params_.interpolated_rays);
   init_param("computed_ray_count", params_.computed_ray_count);
 }
@@ -568,10 +567,6 @@ void RPlidarNode::publish_scan(
     return;
   }
 
-  if (!params_.publish_laser_scan && !params_.publish_point_cloud) {
-    return;
-  }
-
   // ------------------------------------------------------------------------
   // 1. Pre-processing: filter and normalize measurements
   // ------------------------------------------------------------------------
@@ -661,30 +656,28 @@ void RPlidarNode::publish_scan(
   sensor_msgs::PointCloud2Iterator<uint8_t> out_g(cloud_msg, "g");
   sensor_msgs::PointCloud2Iterator<uint8_t> out_b(cloud_msg, "b");
 
-  if (params_.publish_laser_scan) {
-    scan_msg.angle_increment =
-        static_cast<float>(TWO_PI / static_cast<double>(beam_count));
-    if (params_.interpolated_rays) {
-      scan_msg.angle_min = 0.f;
-      scan_msg.angle_max = scan_msg.angle_increment * beam_count;
-    } else {
-      scan_msg.angle_min = points[0].angle_rad;
-      scan_msg.angle_max = points[beam_count - 1].angle_rad;
-    }
+  scan_msg.angle_increment =
+      static_cast<float>(TWO_PI / static_cast<double>(beam_count));
+  if (params_.interpolated_rays) {
+    scan_msg.angle_min = 0.f;
+    scan_msg.angle_max = scan_msg.angle_increment * beam_count;
+  } else {
+    scan_msg.angle_min = points[0].angle_rad;
+    scan_msg.angle_max = points[beam_count - 1].angle_rad;
+  }
 
-    long double dur = (duration.nanoseconds() * 1e-9);
-    scan_msg.time_increment = static_cast<float>(dur / beam_count);
-    scan_msg.header.stamp = time;
-    scan_msg.header.frame_id = params_.frame_id;
-    scan_msg.range_min = 0.01f;
-    scan_msg.range_max = cached_current_max_range_;
-    scan_msg.scan_time = dur;
-    scan_msg.ranges.assign(beam_count, std::numeric_limits<float>::infinity());
-    scan_msg.angle_increment =
-        static_cast<float>(TWO_PI / static_cast<double>(beam_count));
-    if (params_.use_intensities) {
-      scan_msg.intensities.assign(beam_count, 0.0f);
-    }
+  long double dur = (duration.nanoseconds() * 1e-9);
+  scan_msg.time_increment = static_cast<float>(dur / beam_count);
+  scan_msg.header.stamp = time;
+  scan_msg.header.frame_id = params_.frame_id;
+  scan_msg.range_min = 0.01f;
+  scan_msg.range_max = cached_current_max_range_;
+  scan_msg.scan_time = dur;
+  scan_msg.ranges.assign(beam_count, std::numeric_limits<float>::infinity());
+  scan_msg.angle_increment =
+      static_cast<float>(TWO_PI / static_cast<double>(beam_count));
+  if (params_.use_intensities) {
+    scan_msg.intensities.assign(beam_count, 0.0f);
   }
 
   if (params_.publish_point_cloud) {
@@ -698,7 +691,7 @@ void RPlidarNode::publish_scan(
   float scaled;
   for (size_t i = 0; i < points.size(); ++i) {
     const auto &p = points[i];
-    if (params_.publish_laser_scan && !params_.interpolated_rays) {
+    if (!params_.interpolated_rays) {
       int index = static_cast<int>((p.angle_rad - scan_msg.angle_min) /
                                     scan_msg.angle_increment);
       if (index >= 0 && index < static_cast<int>(beam_count)) {
@@ -763,9 +756,7 @@ void RPlidarNode::publish_scan(
     }
   }
 
-  if (params_.publish_laser_scan) {
-    scan_pub_->publish(scan_msg);
-  }
+  scan_pub_->publish(scan_msg);
   if (params_.publish_point_cloud) {
     cloud_pub_->publish(cloud_msg);
   }
@@ -831,17 +822,7 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
     }
 
     // --------------------------------------------------------------------
-    // Case 3: Publishing LaserScan toggle
-    // --------------------------------------------------------------------
-    else if (param.get_name() == "publish_laser_scan" &&
-             param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
-      params_.publish_laser_scan = param.as_bool();
-      RCLCPP_INFO(this->get_logger(), "[Dynamic] LaserScan publishing: %s",
-                  params_.publish_laser_scan ? "ON" : "OFF");
-    }
-
-    // --------------------------------------------------------------------
-    // Case 4: Enabling / Disabling ray interpolation
+    // Case 3: Enabling / Disabling ray interpolation
     // --------------------------------------------------------------------
     else if (param.get_name() == "interpolated_rays" &&
              param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
@@ -855,7 +836,7 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
     }
 
     // --------------------------------------------------------------------
-    // Case 5: Ray(imaginary beam) count for interpolation
+    // Case 4: Ray(imaginary beam) count for interpolation
     // --------------------------------------------------------------------
     else if (param.get_name() == "computed_ray_count" &&
              param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
@@ -865,7 +846,7 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
     }
 
     // --------------------------------------------------------------------
-    // Case 6: Scan mode change (requires motor restart)
+    // Case 5: Scan mode change (requires motor restart)
     // --------------------------------------------------------------------
     else if (param.get_name() == "scan_mode" &&
              param.get_type() == rclcpp::ParameterType::PARAMETER_STRING) {
@@ -906,7 +887,7 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
     }
 
     // --------------------------------------------------------------------
-    // Case 7: In ROS2, all parameters are configurable. Warn for unsupported
+    // Case 6: In ROS2, all parameters are configurable. Warn for unsupported
     // --------------------------------------------------------------------
     else {
       RCLCPP_WARN(

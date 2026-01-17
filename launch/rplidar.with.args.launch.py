@@ -157,11 +157,6 @@ def generate_launch_description() -> LaunchDescription:
         default_value="false",
         description="Publish a Pointcloud2 topic",
     )
-    publish_laser_scan_arg = DeclareLaunchArgument(
-        "publish_laser_scan",
-        default_value="true",
-        description="Publish a LaserScan topic",
-    )
     computed_ray_count_arg = DeclareLaunchArgument(
         "computed_ray_count",
         default_value="1450",
@@ -224,8 +219,6 @@ def generate_launch_description() -> LaunchDescription:
                 LaunchConfiguration("max_retries"),
                 "publish_point_cloud":
                 LaunchConfiguration("publish_point_cloud"),
-                "publish_laser_scan":
-                LaunchConfiguration("publish_laser_scan"),
                 "computed_ray_count":
                 LaunchConfiguration("computed_ray_count"),
                 "interpolated_rays":
@@ -301,7 +294,6 @@ def generate_launch_description() -> LaunchDescription:
             qos_policy_arg,
             max_retries_arg,
             publish_point_cloud_arg,
-            publish_laser_scan_arg,
             computed_ray_count_arg,
             interpolated_rays_arg,
             use_intensities_arg,

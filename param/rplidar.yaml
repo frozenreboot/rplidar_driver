@@ -57,8 +57,7 @@ rplidar_node:
     #          beam. However, this still, doesn't produce accurate measurements.
     #
     #          If using the lidar only for obstacle detection, using this param
-    #          is not recommended. Even using the point cloud topic and
-    #          disabling the 'publish_laser_scan' param altogether may help.
+    #          is not recommended.
     #
     #   true : Use fixed imaginary rays according to the computed_ray_count
     #          parameter. Every 2 consecutive measurement is converted to a line
@@ -132,14 +131,6 @@ rplidar_node:
     #                        system RMW QoS settings.
     qos_policy: "sensor_data"
 
-    # publish_point_cloud:
-    #   Whether to publish scan as a PointCloud2 message. This is for debugging.
-    publish_point_cloud: false
-
-    # publish_laser_scan:
-    #   Whether to publish scan as a LaserScan message
-    publish_laser_scan: true
-
     # max_retries:
     #   Number of allowed communication errors before resetting the driver.
     #   Recommended: 3 (~4-6s delay) for quicker disconnect detection.
@@ -162,6 +153,10 @@ rplidar_node:
     # =========================================================
     # [5] Debugging
     # =========================================================
+
+    # publish_point_cloud:
+    #   Whether to publish scan as a PointCloud2 message. This is for debugging.
+    publish_point_cloud: false
 
     # intensities_as_angles:
     #   Previously if the scan_processing is false, this driver was publishing

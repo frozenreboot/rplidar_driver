@@ -362,9 +362,6 @@ private:
     // If true, publishes a PointCloud2 typed topic
     bool publish_point_cloud = false;
 
-    // If true, publishes a LaserScan typed topic
-    bool publish_laser_scan = true;
-
     // If true, uses interpolation to compute the LaserScan message
     bool interpolated_rays = false;
 
