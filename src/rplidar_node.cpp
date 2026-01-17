@@ -60,6 +60,8 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <rclcpp/qos.hpp>
+#include <rclcpp/time.hpp>
 #include <thread>
 #include <vector>
 
@@ -76,21 +78,6 @@ using namespace std::chrono_literals;
 RPlidarNode::RPlidarNode(const rclcpp::NodeOptions &options)
     : rclcpp_lifecycle::LifecycleNode("rplidar_node", options),
       diagnostic_updater_(this) {
-  // Declare static parameters. Values are read in init_parameters().
-  this->declare_parameter<std::string>("serial_port", "/dev/rplidar");
-  this->declare_parameter<int>("serial_baudrate", 1000000);
-  this->declare_parameter<std::string>("frame_id", "laser_frame");
-  this->declare_parameter<bool>("inverted", false);
-  this->declare_parameter<bool>("angle_compensate", true);
-
-  // Advanced / debug / mode parameters.
-  this->declare_parameter<bool>("dummy_mode", false);
-  this->declare_parameter<std::string>("scan_mode", "");
-  this->declare_parameter<int>("rpm", 0);
-  this->declare_parameter<float>("max_distance", 0.0f);
-
-  this->declare_parameter<float>("angle_offset", 0.0f); // Default 0.0
-  this->get_parameter("angle_offset", params_.angle_offset);
 
   RCLCPP_INFO(this->get_logger(),
               "[Lifecycle] Node created. Waiting for configuration.");
@@ -155,24 +142,28 @@ RPlidarNode::on_configure(const rclcpp_lifecycle::State &) {
   // 4. QoS setup for LaserScan publisher
   // ------------------------------------------------------------------------
   std::string qos_policy;
-  this->get_parameter_or("qos_reliability", qos_policy,
-                         std::string("best_effort"));
+  this->get_parameter_or("qos_profile", qos_policy, std::string("sensor_data"));
 
-  rclcpp::QoS qos_profile(10); // History: depth 10
+  rclcpp::QoS qos_profile = rclcpp::SensorDataQoS();
 
-  if (qos_policy == "reliable") {
-    qos_profile.reliable();
-    RCLCPP_INFO(this->get_logger(), "[QoS] Policy set to RELIABLE (TCP-like).");
-  } else {
-    qos_profile.best_effort();
+  if (qos_policy == "sensor_data") {
     RCLCPP_INFO(this->get_logger(),
-                "[QoS] Policy set to BEST_EFFORT (UDP-like).");
+                "[QoS] Policy: rmw_qos_profile_sensor_data");
+  } else if (qos_policy == "services_default") {
+    qos_profile = rclcpp::ServicesQoS();
+    RCLCPP_INFO(this->get_logger(),
+                "[QoS] Policy: rmw_qos_profile_services_default");
+  } else {
+    qos_profile = rclcpp::SystemDefaultsQoS();
+    RCLCPP_INFO(this->get_logger(),
+                "[QoS] Policy: rmw_qos_profile_system_default");
   }
-  qos_profile.durability_volatile();
 
   // Create publisher using the configured QoS profile.
   scan_pub_ =
       this->create_publisher<sensor_msgs::msg::LaserScan>("scan", qos_profile);
+  cloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+      "cloud", qos_profile);
 
   // ------------------------------------------------------------------------
   // 5. Optional static TF broadcast
@@ -202,9 +193,18 @@ RPlidarNode::on_configure(const rclcpp_lifecycle::State &) {
                 "[TF] Broadcasting static transform: %s -> %s",
                 t.header.frame_id.c_str(), t.child_frame_id.c_str());
   }
+  // ------------------------------------------------------------------------
+  // 6. Detect protocol type
+  // ------------------------------------------------------------------------
+  auto real_drv = dynamic_cast<RealLidarDriver *>(driver_.get());
+  if (real_drv && real_drv->is_new_type()) {
+    is_new_protocol_ = true;
+    RCLCPP_INFO(this->get_logger(),
+                "[Driver] Using new protocol, device is a new-type model.");
+  }
 
   // ------------------------------------------------------------------------
-  // 6. Diagnostics setup
+  // 7. Diagnostics setup
   // ------------------------------------------------------------------------
   diagnostic_updater_.setHardwareID("rplidar-" + params_.serial_port);
   diagnostic_updater_.add("RPLidar Status", this,
@@ -249,6 +249,7 @@ RPlidarNode::on_cleanup(const rclcpp_lifecycle::State &) {
   RCLCPP_INFO(this->get_logger(), "[Lifecycle] Cleaning up resources...");
 
   scan_pub_.reset();
+  cloud_pub_.reset();
 
   if (driver_) {
     driver_->disconnect();
@@ -269,26 +270,25 @@ RPlidarNode::on_shutdown(const rclcpp_lifecycle::State &state) {
 // ============================================================================
 
 void RPlidarNode::init_parameters() {
-  this->get_parameter("serial_port", params_.serial_port);
-  this->get_parameter("serial_baudrate", params_.serial_baudrate);
-  this->get_parameter("frame_id", params_.frame_id);
-  this->get_parameter("inverted", params_.inverted);
-  this->get_parameter("angle_compensate", params_.angle_compensate);
-  this->get_parameter("dummy_mode", params_.dummy_mode);
-  this->get_parameter("scan_mode", params_.scan_mode);
-  this->get_parameter("rpm", params_.rpm);
-  this->get_parameter("max_distance", params_.max_distance);
+  // Static parameters
+  init_param("serial_port", params_.serial_port);
+  init_param("serial_baudrate", params_.serial_baudrate);
+  init_param("frame_id", params_.frame_id);
+  init_param("angle_compensate", params_.angle_compensate);
+  init_param("max_distance", params_.max_distance);
+  init_param("dummy_mode", params_.dummy_mode);
+  init_param("publish_tf", params_.publish_tf);
+  init_param("max_retries", params_.max_retries);
+  init_param("use_intensities", params_.use_intensities);
+  init_param("intensities_as_angles", params_.intensities_as_angles);
 
-  // Dynamic / runtime-tunable parameters with defaults.
-  this->declare_parameter<bool>("scan_processing", true);
-  this->get_parameter("scan_processing", params_.scan_processing);
-
-  this->declare_parameter<int>("max_retries", 3);
-  this->get_parameter("max_retries", params_.max_retries);
-
-  this->declare_parameter<std::string>("qos_reliability", "best_effort");
-  this->declare_parameter<bool>("publish_tf", true);
-  this->get_parameter("publish_tf", params_.publish_tf);
+  // Dynamic ones, don't forget to check them in the callback
+  init_param("scan_mode", params_.scan_mode);
+  init_param("rpm", params_.rpm);
+  init_param("publish_point_cloud", params_.publish_point_cloud);
+  init_param("publish_laser_scan", params_.publish_laser_scan);
+  init_param("interpolated_rays", params_.interpolated_rays);
+  init_param("computed_ray_count", params_.computed_ray_count);
 }
 // ============================================================================
 // Scan Loop (Fault-Tolerant FSM)
@@ -355,6 +355,7 @@ void RPlidarNode::scan_loop() {
         }
         RCLCPP_INFO(this->get_logger(), "[Hardware Detail] %s",
                     cached_device_info_.c_str());
+        is_new_protocol_ = real_drv->is_new_type();
       }
 
       // Transition: CONNECTING -> CHECK_HEALTH
@@ -392,7 +393,7 @@ void RPlidarNode::scan_loop() {
         driver_->print_summary();
 
         float hw_limit = driver_->get_hw_max_distance();
-        if (params_.max_distance > 0.0f) {
+        if (params_.max_distance > 0.001f) {
           cached_current_max_range_ = std::min(params_.max_distance, hw_limit);
         } else {
           cached_current_max_range_ = hw_limit;
@@ -427,6 +428,13 @@ void RPlidarNode::scan_loop() {
         if (driver_->grab_scan_data(nodes)) {
           success = true;
           error_count = 0;
+          // New devices require rpm setting after some scanning
+          if (is_new_protocol_ && initial_reset_required_) {
+            RCLCPP_INFO(this->get_logger(),
+                        "[FSM] Re-setting speed to fix RPM...");
+            driver_->set_motor_speed(params_.rpm);
+            initial_reset_required_ = false;
+          }
         } else {
           error_count++;
           // Use max_retries parameter for hardware timeout behavior
@@ -444,7 +452,7 @@ void RPlidarNode::scan_loop() {
       }
 
       if (success && !nodes.empty()) {
-        double duration = (this->now() - start_time).seconds();
+        rclcpp::Duration duration = (this->now() - start_time);
         publish_scan(nodes, start_time, duration);
       }
       break;
@@ -460,6 +468,7 @@ void RPlidarNode::scan_loop() {
       {
         std::lock_guard<std::mutex> lock(driver_mutex_);
         driver_.reset(); // Destroy existing driver
+        initial_reset_required_ = true;
 
         if (params_.dummy_mode) {
           driver_ = std::make_unique<DummyLidarDriver>();
@@ -548,146 +557,211 @@ void RPlidarNode::update_diagnostics(
 }
 
 // ============================================================================
-// LaserScan Publishing
+// LaserScan and PointCloud2 Publishing
 // ============================================================================
 
-/**
- * @brief Convert raw driver data to @c sensor_msgs::msg::LaserScan and publish.
- *
- * @param nodes         Raw measurement nodes from the driver.
- * @param start_time    Timestamp corresponding to the start of the scan.
- * @param scan_duration Total duration of the scan in seconds.
- */
 void RPlidarNode::publish_scan(
     const std::vector<sl_lidar_response_measurement_node_hq_t> &nodes,
-    rclcpp::Time start_time, double scan_duration) {
+    rclcpp::Time time, rclcpp::Duration duration) {
   if (nodes.empty()) {
+    return;
+  }
+
+  if (!params_.publish_laser_scan && !params_.publish_point_cloud) {
     return;
   }
 
   // ------------------------------------------------------------------------
   // 1. Pre-processing: filter and normalize measurements
   // ------------------------------------------------------------------------
-  struct Point {
-    float angle_rad;
-    float dist_m;
-    float intensity;
-  };
 
-  std::vector<Point> valid_points;
-  valid_points.reserve(nodes.size());
+  std::vector<RpPoint> points;
+  // points.resize(nodes.size());
 
-  bool is_new_protocol = false;
-  auto real_drv = dynamic_cast<RealLidarDriver *>(driver_.get());
-  if (real_drv && real_drv->is_new_type()) {
-    is_new_protocol = true;
-  }
+  float max_intensity = -std::numeric_limits<float>::infinity();
+  float min_intensity = std::numeric_limits<float>::infinity();
 
   for (const auto &node : nodes) {
+    double angle_rad, dist_m, x, y;
+    float intensity;
+
+    // RPLidar angle readings are clockwise 0 to 360, mathematically incorrect.
+    // Angles should increase counter-clockwise. In ROS standard, X(0) is front,
+    // Y is left. Also reported from the driver in counter-clockwise order.
+    angle_rad = TWO_PI - (node.angle_z_q14 * Q14_TO_RAD);
+    // Also They don't always start with the smallest angles closest to the
+    // front. Instead, those angles are appended to the end of the array.
+    // However, the angle order is usually preserved. Unfortunately, sometimes
+    // The order is fully corrupted, so we need to sort them later.
+
     if (node.dist_mm_q2 == 0) {
-      continue;
-    }
-    float angle_deg = node.angle_z_q14 * 90.0f / 16384.0f;
-    angle_deg += params_.angle_offset;
-    if (angle_deg >= 360.0f)
-      angle_deg -= 360.0f;
-    if (angle_deg < 0.0f)
-      angle_deg += 360.0f;
-
-    float angle_rad = angle_deg * (M_PI / 180.0f);
-    float dist_m = node.dist_mm_q2 / 4000.0f;
-    float intensity = is_new_protocol ? static_cast<float>(node.quality)
-                                      : static_cast<float>(node.quality >> 2);
-
-    if (angle_rad < 0.0f) {
-      angle_rad += 2.0f * M_PI;
-    }
-    if (angle_rad >= 2.0f * M_PI) {
-      angle_rad -= 2.0f * M_PI;
+      if (params_.interpolated_rays) {
+        dist_m = std::numeric_limits<double>::infinity();
+        x = std::numeric_limits<double>::infinity();
+        y = std::numeric_limits<double>::infinity();
+        intensity = 0.;
+      } else {
+        continue;
+      }
+    } else {
+      dist_m = node.dist_mm_q2 / 4000.0;
+      x = static_cast<double>(dist_m * cos(angle_rad));
+      y = static_cast<double>(dist_m * sin(angle_rad));
+      intensity = is_new_protocol_ ? static_cast<float>(node.quality)
+                                   : static_cast<float>(node.quality >> 2);
     }
 
-    valid_points.push_back({angle_rad, dist_m, intensity});
+    min_intensity = std::min(min_intensity, intensity);
+    max_intensity = std::max(max_intensity, intensity);
+
+    points.push_back({angle_rad, dist_m, x, y, intensity});
   }
 
   // ------------------------------------------------------------------------
   // 2. Sort by angle
   // ------------------------------------------------------------------------
-  std::sort(
-      valid_points.begin(), valid_points.end(),
-      [](const Point &a, const Point &b) { return a.angle_rad < b.angle_rad; });
 
-  if (valid_points.empty()) {
+  std::sort(points.begin(), points.end(),
+    [](const RpPoint &a, const RpPoint &b) -> bool {
+      return a.angle_rad < b.angle_rad;
+    });
+
+  if (points.empty()) {
     return;
   }
 
   // ------------------------------------------------------------------------
-  // 3. Publish LaserScan message
+  // 3. Prepare to publish messages
   // ------------------------------------------------------------------------
-  sensor_msgs::msg::LaserScan scan_msg;
 
-  scan_msg.header.stamp = start_time;
-  scan_msg.header.frame_id = params_.frame_id;
-
-  scan_msg.angle_min = 0.0f;
-  scan_msg.angle_max = 2.0f * M_PI;
-  scan_msg.range_min = 0.15f;
-  scan_msg.range_max = cached_current_max_range_;
-  scan_msg.scan_time = scan_duration;
-
-  // ------------------------------------------------------------------------
-  // 4. Mode selection: resampled vs raw mapping
-  // ------------------------------------------------------------------------
-  if (params_.scan_processing) {
-    // Mode A: Resample into a fixed angular grid.
-    size_t beam_count = valid_points.size();
-    scan_msg.angle_increment =
-        static_cast<float>((2.0 * M_PI) / static_cast<double>(beam_count));
-    scan_msg.time_increment =
-        static_cast<float>(scan_duration / static_cast<double>(beam_count));
-
-    scan_msg.ranges.assign(beam_count, std::numeric_limits<float>::infinity());
-    scan_msg.intensities.assign(beam_count, 0.0f);
-
-    for (const auto &p : valid_points) {
-      float angle = p.angle_rad;
-
-      if (params_.inverted) {
-        angle = (2.0f * M_PI) - angle;
-        if (angle >= 2.0f * M_PI) {
-          angle -= 2.0f * M_PI;
-        }
-      }
-
-      int index = static_cast<int>((angle - scan_msg.angle_min) /
-                                   scan_msg.angle_increment);
-
-      if (index >= 0 && index < static_cast<int>(beam_count)) {
-        if (p.dist_m < scan_msg.ranges[index]) {
-          scan_msg.ranges[index] = p.dist_m;
-          scan_msg.intensities[index] = p.intensity;
-        }
-      }
-    }
+  uint32_t beam_count;
+  if (params_.interpolated_rays) {
+    beam_count = params_.computed_ray_count;
   } else {
-    // Mode B: Raw mapping with simple ordering.
-    size_t count = valid_points.size();
-    double denom = static_cast<double>(count > 1 ? count - 1 : 1);
+    beam_count = points.size();
+  }
 
-    scan_msg.angle_increment = static_cast<float>((2.0 * M_PI) / denom);
-    scan_msg.time_increment = static_cast<float>(scan_duration / denom);
+  sensor_msgs::msg::LaserScan scan_msg;
+  sensor_msgs::msg::PointCloud2 cloud_msg;
+  sensor_msgs::PointCloud2Modifier modifier(cloud_msg);
+  cloud_msg.width = points.size();
+  modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
+  modifier.resize(cloud_msg.width);
+  sensor_msgs::PointCloud2Iterator<float> out_x(cloud_msg, "x");
+  sensor_msgs::PointCloud2Iterator<float> out_y(cloud_msg, "y");
+  sensor_msgs::PointCloud2Iterator<float> out_z(cloud_msg, "z");
+  sensor_msgs::PointCloud2Iterator<uint8_t> out_r(cloud_msg, "r");
+  sensor_msgs::PointCloud2Iterator<uint8_t> out_g(cloud_msg, "g");
+  sensor_msgs::PointCloud2Iterator<uint8_t> out_b(cloud_msg, "b");
 
-    scan_msg.ranges.resize(count);
-    scan_msg.intensities.resize(count);
+  if (params_.publish_laser_scan) {
+    scan_msg.angle_increment =
+        static_cast<float>(TWO_PI / static_cast<double>(beam_count));
+    if (params_.interpolated_rays) {
+      scan_msg.angle_min = 0.f;
+      scan_msg.angle_max = scan_msg.angle_increment * beam_count;
+    } else {
+      scan_msg.angle_min = points[0].angle_rad;
+      scan_msg.angle_max = points[beam_count - 1].angle_rad;
+    }
 
-    for (size_t i = 0; i < count; ++i) {
-      // rplidar turn to CW
-      size_t idx = params_.inverted ? i : (count - 1 - i);
-      scan_msg.ranges[idx] = valid_points[i].dist_m;
-      scan_msg.intensities[idx] = valid_points[i].intensity;
+    long double dur = (duration.nanoseconds() * 1e-9);
+    scan_msg.time_increment = static_cast<float>(dur / beam_count);
+    scan_msg.header.stamp = time;
+    scan_msg.header.frame_id = params_.frame_id;
+    scan_msg.range_min = 0.01f;
+    scan_msg.range_max = cached_current_max_range_;
+    scan_msg.scan_time = dur;
+    scan_msg.ranges.assign(beam_count, std::numeric_limits<float>::infinity());
+    scan_msg.angle_increment =
+        static_cast<float>(TWO_PI / static_cast<double>(beam_count));
+    if (params_.use_intensities) {
+      scan_msg.intensities.assign(beam_count, 0.0f);
     }
   }
 
-  scan_pub_->publish(scan_msg);
+  if (params_.publish_point_cloud) {
+    cloud_msg.header.stamp = time;
+    cloud_msg.header.frame_id = params_.frame_id;
+    cloud_msg.height = 1;
+    cloud_msg.is_bigendian = false;
+    cloud_msg.is_dense = false; // there may be invalid points
+  }
+
+  float scaled;
+  for (size_t i = 0; i < points.size(); ++i) {
+    const auto &p = points[i];
+    if (params_.publish_laser_scan && !params_.interpolated_rays) {
+      int index = static_cast<int>((p.angle_rad - scan_msg.angle_min) /
+                                    scan_msg.angle_increment);
+      if (index >= 0 && index < static_cast<int>(beam_count)) {
+        if (p.dist_m < scan_msg.ranges[index]) {
+          scan_msg.ranges[index] = static_cast<float>(p.dist_m);
+          if (params_.use_intensities) {
+            if (!params_.intensities_as_angles) {
+              scan_msg.intensities[index] =
+                  scaleIntensity(p.intensity, min_intensity, max_intensity);
+            } else {
+              scan_msg.intensities[index] = p.angle_rad;
+            }
+          }
+        }
+      }
+    }
+
+    if (params_.publish_point_cloud) {
+      *out_x = static_cast<float>(p.x);
+      *out_y = static_cast<float>(p.y);
+      *out_z = 0.f;
+      *out_r = 0.f;
+      *out_g = params_.use_intensities ? p.intensity : 255;
+      *out_b = 0.f;
+
+      ++out_x;
+      ++out_y;
+      ++out_z;
+      ++out_r;
+      ++out_g;
+      ++out_b;
+    }
+  }
+
+  // separate loop for interpolation
+  // YAML file warns about optimization and how to do it with the parameters.
+  if (params_.interpolated_rays) {
+    int p_size = points.size();
+    if (p_size < 2)
+      return;
+
+    for (int p = 1, r = 1; r < (beam_count - 1); r++) {
+      double target_angle = r * scan_msg.angle_increment;
+
+      // Find the segment [p-1, p] that contains target_angle
+      // Check p < p_size-1 before incrementing p
+      while (p < p_size && points[p].angle_rad < target_angle) {
+        p++;
+      }
+
+      const auto &prev = points[p - 1];
+      const auto &curr = points[p];
+      if (target_angle >= prev.angle_rad && target_angle <= curr.angle_rad) {
+        if (!std::isinf(prev.dist_m) && !std::isinf(curr.dist_m)) {
+          scan_msg.ranges[r] = raySegmentIntersection(target_angle, prev, curr);
+          if (params_.use_intensities) {
+            scan_msg.intensities[r] =
+                scaleIntensity(curr.intensity, min_intensity, max_intensity);
+          }
+        }
+      }
+    }
+  }
+
+  if (params_.publish_laser_scan) {
+    scan_pub_->publish(scan_msg);
+  }
+  if (params_.publish_point_cloud) {
+    cloud_pub_->publish(cloud_msg);
+  }
 }
 
 // ============================================================================
@@ -730,20 +804,61 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
                   new_rpm);
       driver_->set_motor_speed(static_cast<uint16_t>(new_rpm));
       params_.rpm = new_rpm;
+
+      if (params_.interpolated_rays) {
+        RCLCPP_WARN(
+          this->get_logger(),
+          "[Dynamic] interpolated_rays was enabled before rpm change. "
+          "Do not forget to set 'computed_ray_count' parameter accordingly.");
+      }
     }
 
     // --------------------------------------------------------------------
-    // Case 2: Scan processing (software resampling) toggle
+    // Case 2: Publishing PointCloud2 toggle
     // --------------------------------------------------------------------
-    else if (param.get_name() == "scan_processing" &&
+    else if (param.get_name() == "publish_point_cloud" &&
              param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
-      params_.scan_processing = param.as_bool();
-      RCLCPP_INFO(this->get_logger(), "[Dynamic] Scan processing: %s",
-                  params_.scan_processing ? "ON" : "OFF");
+      params_.publish_point_cloud = param.as_bool();
+      RCLCPP_INFO(this->get_logger(), "[Dynamic] PointCloud2 publishing: %s",
+                  params_.publish_point_cloud ? "ON" : "OFF");
     }
 
     // --------------------------------------------------------------------
-    // Case 3: Scan mode change (requires motor restart)
+    // Case 3: Publishing LaserScan toggle
+    // --------------------------------------------------------------------
+    else if (param.get_name() == "publish_laser_scan" &&
+             param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
+      params_.publish_laser_scan = param.as_bool();
+      RCLCPP_INFO(this->get_logger(), "[Dynamic] LaserScan publishing: %s",
+                  params_.publish_laser_scan ? "ON" : "OFF");
+    }
+
+    // --------------------------------------------------------------------
+    // Case 4: Enabling / Disabling ray interpolation
+    // --------------------------------------------------------------------
+    else if (param.get_name() == "interpolated_rays" &&
+             param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
+      params_.interpolated_rays = param.as_bool();
+      RCLCPP_INFO(this->get_logger(), "[Dynamic] Ray Interpolation: %s",
+                  params_.interpolated_rays ? "ON" : "OFF");
+      RCLCPP_WARN(
+          this->get_logger(),
+          "[Dynamic] interpolated_rays enabled. "
+          "Do not forget to set 'computed_ray_count' parameter accordingly.");
+    }
+
+    // --------------------------------------------------------------------
+    // Case 5: Ray(imaginary beam) count for interpolation
+    // --------------------------------------------------------------------
+    else if (param.get_name() == "computed_ray_count" &&
+             param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+      params_.computed_ray_count = param.as_int();
+      RCLCPP_INFO(this->get_logger(), "[Dynamic] Ray Interpolation: %d",
+                  params_.computed_ray_count);
+    }
+
+    // --------------------------------------------------------------------
+    // Case 6: Scan mode change (requires motor restart)
     // --------------------------------------------------------------------
     else if (param.get_name() == "scan_mode" &&
              param.get_type() == rclcpp::ParameterType::PARAMETER_STRING) {
@@ -767,6 +882,12 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
         params_.scan_mode = new_mode;
         driver_->print_summary();
         RCLCPP_INFO(this->get_logger(), "[Dynamic] Mode switch successful.");
+        if (params_.interpolated_rays) {
+        RCLCPP_WARN(
+            this->get_logger(),
+            "[Dynamic] interpolated_rays was enabled before scan mode change. "
+            "Do not forget to set 'computed_ray_count' parameter accordingly.");
+        }
       } else {
         // Fallback to automatic mode if switch fails.
         RCLCPP_ERROR(this->get_logger(),
@@ -775,6 +896,17 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
         result.successful = false;
         result.reason = "Failed to switch scan mode";
       }
+    }
+
+    // --------------------------------------------------------------------
+    // Case 7: In ROS2, all parameters are configurable. Warn for unsupported
+    // --------------------------------------------------------------------
+    else {
+      RCLCPP_WARN(
+          this->get_logger(),
+          "[Dynamic] Changing param '%s' dynamically is not supported at the "
+          "moment.",
+          param.get_name().c_str());
     }
   }
 

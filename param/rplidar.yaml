@@ -15,7 +15,6 @@ rplidar_node:
     serial_baudrate: 1000000
 
     frame_id: "laser_frame"
-    inverted: false
 
     # [1] Hardware / SDK Level: Geometric / angle compensation in the SDK
     #
@@ -24,15 +23,6 @@ rplidar_node:
     #
     # NOTE: This flag is interpreted by the driver implementation.
     angle_compensate: true
-
-    # [2] Software / ROS Level: Scan processing on the node side
-    #
-    # true  : Resample data into a fixed angular grid (uniform angle increments).
-    #         Required for typical SLAM / Navigation stacks that assume dense,
-    #         evenly spaced LaserScan ranges.
-    # false : Publish raw measurements as-is (angle spacing may be non-uniform).
-    #         Useful mainly for debugging or custom consumers.
-    scan_processing: false
 
     # ---------------------------------------------------------
     # [Smart Auto-Detection Settings]
@@ -43,12 +33,68 @@ rplidar_node:
     #   Specific scan mode name (e.g. "DenseBoost", "Standard", "Express").
     #   Set to an empty string ("") to auto-detect a suitable mode
     #   (e.g. S3 -> "DenseBoost").
-    scan_mode: ""
+    #
+    #   The default value is "Standard" to avoid hardware adding imaginary
+    #   extra measurements. If you want to use "DenseBoost" mode, enable
+    #   'interpolated_rays' parameter and tune the 'computed_ray_count' instead.
+    scan_mode: "Standard"
 
     # rpm:
-    #   Motor speed in RPM.
+    #   Motor speed in RPMs.
     #   Set to 0 to use the model's default (e.g. ~600 RPM).
+    #   For achieving 15 Hz measurement speed, set it to 900.
+    #   For S3, the max value is 1200 (20 Hz). Check your lidar model's max
+    #   supported freq from its datasheet.
     rpm: 0
+
+    # ---------------------------------------------------------
+    # [Measurement Quality & Performance]
+    # ---------------------------------------------------------
+
+    # interpolated_rays (by cosmicog):
+    #   false: The default behaviour is re-binning irregular lidar points into a
+    #          uniform LaserScan angular grid, keeping the closest return per
+    #          beam. However, this still, doesn't produce accurate measurements.
+    #
+    #          If using the lidar only for obstacle detection, using this param
+    #          is not recommended. Even using the point cloud topic and
+    #          disabling the 'publish_laser_scan' param altogether may help.
+    #
+    #   true : Use fixed imaginary rays according to the computed_ray_count
+    #          parameter. Every 2 consecutive measurement is converted to a line
+    #          segment, and the intersection point of the fixed rays and these
+    #          line segments are treated as correct measurements.
+    #
+    #          If using the lidar for mapping and localisation, enabling this
+    #          parameter is recommended. Sharp corners are hard to detect with
+    #          all lidars because of the light beam scattering. This param also
+    #          causes beginning of the static object surface readings disappear,
+    #          which would help about using corners for mapping & localisation.
+    #
+    #          Do not forget to disable point cloud publishing to optimise
+    #          throughput when not debugging, or if not using the cloud msg.
+    interpolated_rays: false
+
+    # computed_ray_count:
+    #   Fixed beam count for the LaserScan message. RoboPeak lidars provide
+    #   different number of points on every rotation of the scanner. The beam
+    #   count is also dependent on the 'rpm' and 'scan_mode' parameters.
+
+    #   To tune this parameter, set your RPM and scan mode, enable
+    #   'publish_point_cloud' parameter and check the average point count in the
+    #   messages in the cloud topic. Using "DenseBoost" mode is not recommended
+    #   with it to avoid driver adding the extra points.
+    computed_ray_count: 1450
+
+    # use_intensities:
+    #   Most of the new models report weird values with the new sdk, and
+    #   disabling this as LaserScan msg documentation suggests, reduces network
+    #   transport cost of the published message.
+    use_intensities: false
+
+    # =========================================================
+    # [3] Driver Features (extensions added by frozenreboot)
+    # =========================================================
 
     # max_distance:
     #   Maximum range clip in meters.
@@ -61,10 +107,6 @@ rplidar_node:
     #   false : Use real hardware via the Slamtec SDK.
     dummy_mode: false
 
-    # =========================================================
-    # [3] Driver Features (extensions added by frozenreboot)
-    # =========================================================
-
     # publish_tf:
     #   true  : The node publishes a static TF (e.g. base_link -> laser_frame).
     #           Handy for quick tests or minimal setups.
@@ -72,12 +114,31 @@ rplidar_node:
     #           other dedicated TF sources. Recommended for production robots.
     publish_tf: true
 
-    # qos_reliability:
-    #   "best_effort" : Prioritize throughput (typical choice for sensor data,
-    #                   similar to UDP semantics).
-    #   "reliable"    : Prioritize delivery guarantees (similar to TCP semantics);
-    #                   may be useful on unstable networks, at the cost of latency.
-    qos_reliability: "best_effort"
+    # qos_policy:
+    #   "sensor_data"      : Prioritize throughput, similar to UDP semantics.
+    #                        History: Keep last,
+    #                        Depth: 5,
+    #                        Reliability: Best effort,
+    #                        Durability: Volatile,
+    #                        rest of the specs are default.
+    #   "services_default" : Prioritize delivery guarantees, similar to TCP. May
+    #                        be useful on unstable networks, at the cost of
+    #                        latency.
+    #                        History: Keep last,
+    #                        Depth: 10,
+    #                        Reliability: Reliable,
+    #                        Durability: Volatile,
+    #   "system_default"   : This value or any other value selects the default
+    #                        system RMW QoS settings.
+    qos_policy: "sensor_data"
+
+    # publish_point_cloud:
+    #   Whether to publish scan as a PointCloud2 message. This is for debugging.
+    publish_point_cloud: false
+
+    # publish_laser_scan:
+    #   Whether to publish scan as a LaserScan message
+    publish_laser_scan: true
 
     # max_retries:
     #   Number of allowed communication errors before resetting the driver.
@@ -97,3 +158,21 @@ rplidar_node:
     #   - Standard devices (S-Series): 0.0
     #   - Legacy A1,A2 (cable-side zero): 180.0
     angle_offset: 0.0
+
+    # =========================================================
+    # [5] Debugging
+    # =========================================================
+
+    # intensities_as_angles:
+    #   Previously if the scan_processing is false, this driver was publishing
+    #   a debug type of message with closer angle values to the reported values
+    #   by the hardware. However, that does not fit the LaserScan definition.
+    #   Now the scan_processing is removed and is the default behaviour This
+    #   parameter allows users to directly read the angle values reported by the
+    #   hardware.
+    #
+    #   If true, LaserScan messages will have angles for corresponding distances
+    #   in the intensities array, reported by the lidar hardware.
+    #
+    #   Doesn't work when interpolated_rays is enabled since it is not necessary
+    intensities_as_angles: false

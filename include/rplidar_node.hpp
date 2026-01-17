@@ -67,10 +67,17 @@
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
 #include <rclcpp_lifecycle/lifecycle_publisher.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <thread>
 #include <vector>
 
 #include "lidar_driver_wrapper.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+
+#define Q14_TO_RAD (90. / 16384.) * (M_PI / 180.)
+#define TWO_PI 2. * M_PI
+#define HALF_PI M_PI / 2.
 
 enum class DriverState { CONNECTING, CHECK_HEALTH, WARMUP, RUNNING, RESETTING };
 /**
@@ -111,6 +118,16 @@ public:
    * the node is still active during destruction.
    */
   ~RPlidarNode() override;
+
+  /**
+   * @brief Custom point class for RPLidar points
+   */
+  struct RpPoint {
+    double angle_rad;
+    double dist_m;
+    double x, y;
+    float intensity;
+  };
 
   // ---------------------------------------------------------------------
   // Lifecycle Callbacks
@@ -192,6 +209,17 @@ private:
   void init_parameters();
 
   /**
+   * @brief Declare and get a single variable
+   *
+   * Declare the parameter and immediately assign its value to the variable
+   * The current value of 'variable' is used as the default value
+   */
+  template <typename T>
+  void init_param(const std::string &name, T &variable) {
+    variable = this->declare_parameter<T>(name, variable);
+  }
+
+  /**
    * @brief Background loop for continuous scan acquisition.
    *
    * This method is intended to run in a dedicated thread while the node is
@@ -205,15 +233,15 @@ private:
   void scan_loop();
 
   /**
-   * @brief Publish a single @c sensor_msgs::msg::LaserScan message.
+   * @brief Publish LaserScan & PointCloud2 (if enabled) messages.
    *
-   * @param nodes        Measurement nodes acquired from the driver.
-   * @param start_time   Timestamp corresponding to the start of the scan.
+   * @param nodes         Measurement nodes acquired from the driver.
+   * @param time          Timestamp of the scan.
    * @param scan_duration Duration of the scan in seconds.
    */
   void publish_scan(
       const std::vector<sl_lidar_response_measurement_node_hq_t> &nodes,
-      rclcpp::Time start_time, double scan_duration);
+      rclcpp::Time time, rclcpp::Duration duration);
 
   /**
    * @brief Diagnostic callback used by @ref diagnostic_updater_.
@@ -224,6 +252,56 @@ private:
    * @param stat Diagnostic status wrapper to be filled.
    */
   void update_diagnostics(diagnostic_updater::DiagnosticStatusWrapper &stat);
+
+  /**
+   * @brief Helper to solve abstract ray intersections with the
+   *
+   * This method populates the diagnostic status with the current health
+   * information obtained from the driver and internal state.
+   *
+   * @param stat Diagnostic status wrapper to be filled.
+   */
+
+  // ---------------------------------------------------------------------
+  // Inline helpers
+  // ---------------------------------------------------------------------
+  inline float raySegmentIntersection(
+    double angle, const RpPoint& p1, const RpPoint& p2, double eps = 1e-9) {
+
+    const double vx = std::cos(angle);
+    const double vy = std::sin(angle);
+    const double dx = p2.x - p1.x;
+    const double dy = p2.y - p1.y;
+
+    // Determinant (v cross w)
+    const double det = vx * dy - vy * dx;
+
+    if (std::abs(det) < eps) return std::numeric_limits<float>::infinity();
+
+    // t: distance along the ray, R(t) = origin + t*v
+    // u: distance along the segment, S(u) = p1 + u*w
+    //  t*v = p1 + u*w
+    double t = (p1.x * dy - p1.y * dx) / det;
+    double u = (p1.x * vy - p1.y * vx) / det;
+
+    if (t > 0 && u >= 0.0 && u <= 1.0) {
+        return static_cast<float>(t);
+    }
+
+    return std::numeric_limits<float>::infinity();
+  }
+
+  inline uint8_t scaleIntensity(float intensity, float min, float max)
+  {
+    const float denom = max - min;
+    if (denom <= 0.0f) {
+      return 0;
+    }
+
+    const float scaled = (intensity - min) * (254.0f / denom);
+
+    return static_cast<uint8_t>(std::clamp(scaled, 0.0f, 254.0f));
+  }
 
   // ---------------------------------------------------------------------
   // Parameters
@@ -237,28 +315,24 @@ private:
    */
   struct Parameters {
     /// Serial device path to the RPLIDAR (e.g., "/dev/ttyUSB0").
-    std::string serial_port;
+    /// The most natural default value without udev
+    /// The YAML file default vaule is "/dev/rplidar"
+    std::string serial_port = "/dev/ttyUSB0";
 
     /// Serial baudrate used to communicate with the RPLIDAR.
-    int serial_baudrate;
+    int serial_baudrate = 1000000;
 
-    /// Frame ID used in published LaserScan messages.
-    std::string frame_id;
-
-    /// If true, invert scan angle orientation.
-    bool inverted;
+    /// Frame ID used in published ROS messages.
+    std::string frame_id = "laser_frame";
 
     /// If true, apply angle compensation to the raw scan data.
-    bool angle_compensate;
-
-    /// If true, enable additional scan post-processing logic.
-    bool scan_processing;
+    bool angle_compensate = true;
 
     /// If true, use a dummy driver instead of real hardware.
-    bool dummy_mode;
+    bool dummy_mode = false;
 
     /// Preferred scan mode name to be selected on the device.
-    std::string scan_mode;
+    std::string scan_mode = "";
 
     /// Target motor speed in RPM (0 for device default).
     int rpm = 0;
@@ -266,11 +340,10 @@ private:
     /// Maximum range (in meters) to be used when publishing scans.
     float max_distance = 0.0f;
 
-    /// Angle offset in degrees to compensate for hardware zero-point mismatch.
-    float angle_offset = 0.0f;
-
     /// Number of connection retries before giving up.
     int max_retries = 3;
+
+    int computed_ray_count = 1450;
 
     /**
      * @brief Whether to publish a static TF transform for the LIDAR frame.
@@ -279,6 +352,22 @@ private:
      * (configured elsewhere) and @ref frame_id.
      */
     bool publish_tf = true;
+
+    // If true, publishes a PointCloud2 typed topic
+    bool publish_point_cloud = false;
+
+    // If true, publishes a LaserScan typed topic
+    bool publish_laser_scan = true;
+
+    // If true, uses interpolation to compute the LaserScan message
+    bool interpolated_rays = false;
+
+    // If true, fills the intensities in the LaserScan message
+    bool use_intensities = false;
+
+    // If true, uses intensities array as actual angles reported by the driver.
+    // use_intensities parameter must be enabled to use this.
+    bool intensities_as_angles = false;
   } params_;
 
   // ---------------------------------------------------------------------
@@ -294,6 +383,10 @@ private:
   /// Lifecycle-aware publisher for LaserScan messages.
   rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::LaserScan>::SharedPtr
       scan_pub_;
+
+  /// Lifecycle-aware publisher for PointCloud2 messages.
+  rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+      cloud_pub_;
 
   /**
    * @brief Dynamic parameter change callback.
@@ -329,6 +422,12 @@ private:
 
   /// Cached maximum range (in meters) derived from the driver profile.
   float cached_current_max_range_ = 12.0f;
+
+  // For newer models
+  bool is_new_protocol_ = false;
+
+  // For some newer models, rpm should be set after grabbing the first scan.
+  bool initial_reset_required_ = true;
 };
 
 #endif // RPLIDAR_NODE_HPP_
