@@ -51,11 +51,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.conditions import IfCondition
-from launch_ros.actions import (
-    ComposableNodeContainer,
-    PushRosNamespace,
-    LoadComposableNodes
-)
+from launch_ros.actions import ComposableNodeContainer, LoadComposableNodes
 from launch_ros.descriptions import ComposableNode
 from launch.actions import DeclareLaunchArgument, GroupAction
 from launch.substitutions import LaunchConfiguration, PythonExpression
@@ -88,14 +84,14 @@ def generate_launch_description():
     provide_a_container_arg = DeclareLaunchArgument(
         "provide_a_container",
         default_value="True",
-        description="Whether to use rplidar_container or the user provided " \
+        description="Whether to use rplidar_container or the user provided "
         "container with the [container_name] param",
     )
     container_name_arg = DeclareLaunchArgument(
         "container_name",
         default_value="rplidar_container",
-        description="User provided ComposableNodeContainer name. Send the " \
-        "[namespace] separately if required. e.g. If running the nav2 " \
+        description="User provided ComposableNodeContainer name. Send the "
+        "[namespace] separately if required. e.g. If running the nav2 "
         "within a container: '/ns/nav2_cont', set this to 'nav2_cont'",
     )
     component_name_arg = DeclareLaunchArgument(
@@ -108,7 +104,7 @@ def generate_launch_description():
     namespace = LaunchConfiguration("namespace")
     container_name = LaunchConfiguration("container_name")
     component_name = LaunchConfiguration("component_name")
-    container_name_full = (namespace, '/', container_name)
+    container_name_full = [namespace, "/", container_name]
 
     rplidar_component = ComposableNode(
         package="rplidar_ros2_driver",
@@ -129,7 +125,7 @@ def generate_launch_description():
     )
 
     load_composable_node_wo_container = GroupAction(
-        condition=IfCondition(PythonExpression(['not ', provide_a_container])),
+        condition=IfCondition(PythonExpression(["not ", provide_a_container])),
         actions=[
             LoadComposableNodes(
                 target_container=container_name_full,
