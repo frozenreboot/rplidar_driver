@@ -220,6 +220,10 @@ RPlidarNode::on_activate(const rclcpp_lifecycle::State &state) {
   // Activate base LifecycleNode behavior.
   LifecycleNode::on_activate(state);
 
+  scan_pub_->on_activate();
+  if (params_.publish_point_cloud) {
+    cloud_pub_->on_activate();
+  }
   // Start scan loop thread.
   is_scanning_ = true;
   scan_thread_ = std::thread(&RPlidarNode::scan_loop, this);
@@ -234,6 +238,11 @@ RPlidarNode::on_deactivate(const rclcpp_lifecycle::State &state) {
   is_scanning_ = false;
   if (scan_thread_.joinable()) {
     scan_thread_.join();
+  }
+
+  scan_pub_->on_deactivate();
+  if (cloud_pub_) {
+    cloud_pub_->on_deactivate();
   }
 
   if (driver_) {
@@ -350,12 +359,13 @@ void RPlidarNode::scan_loop() {
         auto real_drv = dynamic_cast<RealLidarDriver *>(driver_.get());
         if (real_drv) {
           cached_device_info_ = real_drv->get_device_info_str();
+          is_new_protocol_ = real_drv->is_new_type();
         } else {
           cached_device_info_ = "[Dummy] Virtual Driver";
+          is_new_protocol_ = false;
         }
         RCLCPP_INFO(this->get_logger(), "[Hardware Detail] %s",
                     cached_device_info_.c_str());
-        is_new_protocol_ = real_drv->is_new_type();
       }
 
       // Transition: CONNECTING -> CHECK_HEALTH
@@ -624,9 +634,9 @@ void RPlidarNode::publish_scan(
   // ------------------------------------------------------------------------
 
   std::sort(points.begin(), points.end(),
-    [](const RpPoint &a, const RpPoint &b) -> bool {
-      return a.angle_rad < b.angle_rad;
-    });
+            [](const RpPoint &a, const RpPoint &b) -> bool {
+              return a.angle_rad < b.angle_rad;
+            });
 
   if (points.empty()) {
     return;
@@ -693,7 +703,7 @@ void RPlidarNode::publish_scan(
     const auto &p = points[i];
     if (!params_.interpolated_rays) {
       int index = static_cast<int>((p.angle_rad - scan_msg.angle_min) /
-                                    scan_msg.angle_increment);
+                                   scan_msg.angle_increment);
       if (index >= 0 && index < static_cast<int>(beam_count)) {
         if (p.dist_m < scan_msg.ranges[index]) {
           scan_msg.ranges[index] = static_cast<float>(p.dist_m);
@@ -741,7 +751,10 @@ void RPlidarNode::publish_scan(
       while (p < p_size && points[p].angle_rad < target_angle) {
         p++;
       }
-
+      // when data ends break for prevent segfault
+      if (p >= p_size) {
+        break;
+      }
       const auto &prev = points[p - 1];
       const auto &curr = points[p];
       if (target_angle >= prev.angle_rad && target_angle <= curr.angle_rad) {
@@ -805,9 +818,9 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
 
       if (params_.interpolated_rays) {
         RCLCPP_WARN(
-          this->get_logger(),
-          "[Dynamic] interpolated_rays was enabled before rpm change. "
-          "Do not forget to set 'computed_ray_count' parameter accordingly.");
+            this->get_logger(),
+            "[Dynamic] interpolated_rays was enabled before rpm change. "
+            "Do not forget to set 'computed_ray_count' parameter accordingly.");
       }
     }
 
@@ -871,10 +884,11 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
         driver_->print_summary();
         RCLCPP_INFO(this->get_logger(), "[Dynamic] Mode switch successful.");
         if (params_.interpolated_rays) {
-        RCLCPP_WARN(
-            this->get_logger(),
-            "[Dynamic] interpolated_rays was enabled before scan mode change. "
-            "Do not forget to set 'computed_ray_count' parameter accordingly.");
+          RCLCPP_WARN(this->get_logger(),
+                      "[Dynamic] interpolated_rays was enabled before scan "
+                      "mode change. "
+                      "Do not forget to set 'computed_ray_count' parameter "
+                      "accordingly.");
         }
       } else {
         // Fallback to automatic mode if switch fails.
