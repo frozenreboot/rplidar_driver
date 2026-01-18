@@ -47,9 +47,6 @@ The node itself is implemented in `rplidar_node` and uses a managed lifecycle:
   - When the node reaches the `inactive` state, an ACTIVATE transition is emitted
 """
 
-import os
-
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
@@ -102,16 +99,10 @@ def generate_launch_description() -> LaunchDescription:
         default_value="laser_frame",
         description="TF link frame of the published sensor messages",
     )
-    inverted_arg = DeclareLaunchArgument(
-        "inverted",
-        default_value="false",
-        description="Rotate the data around z axis 180 degrees",
-    )
     angle_compensate_arg = DeclareLaunchArgument(
         "angle_compensate",
         default_value="false",
-        description="Hardware / SDK Level: Geometric / angle compensation in" \
-        " the SDK. ",
+        description="Hardware / SDK Level: Geometric / angle compensation in the SDK. ",
     )
     scan_mode_arg = DeclareLaunchArgument(
         "scan_mode",
@@ -131,20 +122,20 @@ def generate_launch_description() -> LaunchDescription:
     dummy_mode_arg = DeclareLaunchArgument(
         "dummy_mode",
         default_value="false",
-        description="true  : Run in simulation mode (no hardware required), " \
+        description="true  : Run in simulation mode (no hardware required), "
         "false : Use real hardware via the Slamtec SDK.",
     )
     publish_tf_arg = DeclareLaunchArgument(
         "publish_tf",
         default_value="true",
-        description="If true, broadcast static TF internally, base_link->" \
+        description="If true, broadcast static TF internally, base_link->"
         "[frame_id value], with x,y,z = (0,0,0)",
     )
     qos_policy_arg = DeclareLaunchArgument(
         "qos_policy",
         default_value="sensor_data",
-        description="RMW QoS policy for LaserScan publisher. ('sensor_data' " \
-        "or 'services_default', all other values defaults to " \
+        description="RMW QoS policy for LaserScan publisher. ('sensor_data' "
+        "or 'services_default', all other values defaults to "
         "'system_default')",
     )
     max_retries_arg = DeclareLaunchArgument(
@@ -165,7 +156,7 @@ def generate_launch_description() -> LaunchDescription:
     interpolated_rays_arg = DeclareLaunchArgument(
         "interpolated_rays",
         default_value="true",
-        description="Uses a fixed angle data from intersections with the line" \
+        description="Uses a fixed angle data from intersections with the line"
         "segments between hardware reported points if enabled",
     )
     use_intensities_arg = DeclareLaunchArgument(
@@ -173,10 +164,10 @@ def generate_launch_description() -> LaunchDescription:
         default_value="false",
         description="Whether to use intensities array in the LaserScan msg",
     )
-    intensities_as_angles_arg  = DeclareLaunchArgument(
+    intensities_as_angles_arg = DeclareLaunchArgument(
         "intensities_as_angles",
         default_value="true",
-        description="Allows users to directly read the angle values reported " \
+        description="Allows users to directly read the angle values reported "
         "by the hardware. Use it together with use_intensities:=true",
     )
     angle_offset_arg = DeclareLaunchArgument(
@@ -195,40 +186,23 @@ def generate_launch_description() -> LaunchDescription:
         output=LaunchConfiguration("output"),
         parameters=[
             {
-                "serial_port": 
-                LaunchConfiguration("serial_port"),
-                "serial_baudrate":
-                LaunchConfiguration("serial_baudrate"),
-                "frame_id":
-                LaunchConfiguration("frame_id"),
-                "angle_compensate":
-                LaunchConfiguration("angle_compensate"),
-                "scan_mode":
-                LaunchConfiguration("scan_mode"),
-                "rpm":
-                LaunchConfiguration("rpm"),
-                "max_distance":
-                LaunchConfiguration("max_distance"),
-                "dummy_mode":
-                LaunchConfiguration("dummy_mode"),
-                "publish_tf":
-                LaunchConfiguration("publish_tf"),
-                "qos_policy":
-                LaunchConfiguration("qos_policy"),
-                "max_retries":
-                LaunchConfiguration("max_retries"),
-                "publish_point_cloud":
-                LaunchConfiguration("publish_point_cloud"),
-                "computed_ray_count":
-                LaunchConfiguration("computed_ray_count"),
-                "interpolated_rays":
-                LaunchConfiguration("interpolated_rays"),
-                "use_intensities": 
-                LaunchConfiguration("use_intensities"),
-                "intensities_as_angles":
-                LaunchConfiguration("intensities_as_angles"),
-                "angle_offset":
-                LaunchConfiguration("angle_offset")
+                "serial_port": LaunchConfiguration("serial_port"),
+                "serial_baudrate": LaunchConfiguration("serial_baudrate"),
+                "frame_id": LaunchConfiguration("frame_id"),
+                "angle_compensate": LaunchConfiguration("angle_compensate"),
+                "scan_mode": LaunchConfiguration("scan_mode"),
+                "rpm": LaunchConfiguration("rpm"),
+                "max_distance": LaunchConfiguration("max_distance"),
+                "dummy_mode": LaunchConfiguration("dummy_mode"),
+                "publish_tf": LaunchConfiguration("publish_tf"),
+                "qos_policy": LaunchConfiguration("qos_policy"),
+                "max_retries": LaunchConfiguration("max_retries"),
+                "publish_point_cloud": LaunchConfiguration("publish_point_cloud"),
+                "computed_ray_count": LaunchConfiguration("computed_ray_count"),
+                "interpolated_rays": LaunchConfiguration("interpolated_rays"),
+                "use_intensities": LaunchConfiguration("use_intensities"),
+                "intensities_as_angles": LaunchConfiguration("intensities_as_angles"),
+                "angle_offset": LaunchConfiguration("angle_offset"),
             },
         ],
     )
@@ -279,12 +253,10 @@ def generate_launch_description() -> LaunchDescription:
             node_name_arg,
             namespace_arg,
             output_arg,
-
             # rplidar_node arguments
             serial_port_arg,
             serial_baudrate_arg,
             frame_id_arg,
-            inverted_arg,
             angle_compensate_arg,
             scan_mode_arg,
             rpm_arg,
@@ -299,13 +271,8 @@ def generate_launch_description() -> LaunchDescription:
             use_intensities_arg,
             intensities_as_angles_arg,
             angle_offset_arg,
-
             driver_node,
             configure_event,
             activate_event,
         ]
     )
-
-
-# Local import to avoid circular dependency at top-level
-from launch_ros.events.lifecycle import ChangeState  # noqa: E402
