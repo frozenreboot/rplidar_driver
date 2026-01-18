@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-01-18
+### Added
+- **Scan Interpolation:** Introduced `interpolated_rays` parameter to generate high-density, mathematical line-segment-based measurements (Contribution by @cosmicog).
+- **Debugging Tools:** Added `publish_point_cloud` and `intensities_as_angles` parameters for deep analysis.
+- **QoS Standardization:** Implemented standard ROS 2 QoS profiles (`SensorDataQoS`, etc.) configurable via `qos_policy`.
+
+### Changed
+- **Parameter Overhaul:**
+  - Deprecated `scan_processing` in favor of explicit `interpolated_rays`.
+  - Removed `inverted` parameter (use TF or `angle_offset` instead).
+  - Default `scan_mode` set to "Standard" to prevent ghost points on S-series.
+
+### Fixed
+- **Critical Stability Fixes:**
+  - Prevented segmentation faults in `dummy_mode` caused by unsafe dynamic casting.
+  - Fixed index out-of-bounds crash in the interpolation loop.
+  - Resolved `LifecycleNode` activation issues where publishers remained silent after state transition.
+  - Fixed a `TypeError` (tuple vs list) in the composition launch file.
+
 ## [1.2.0] - 2026-01-09
 ### Changed
 - Updated copyright years to 2026.
