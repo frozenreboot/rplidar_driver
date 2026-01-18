@@ -58,6 +58,10 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
 #include <atomic>
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -73,11 +77,6 @@
 #include <vector>
 
 #include "lidar_driver_wrapper.hpp"
-#include "sensor_msgs/msg/point_cloud2.hpp"
-
-#define Q14_TO_RAD (90. / 16384.) * (M_PI / 180.)
-#define TWO_PI 2. * M_PI
-#define HALF_PI M_PI / 2.
 
 enum class DriverState { CONNECTING, CHECK_HEALTH, WARMUP, RUNNING, RESETTING };
 /**
@@ -199,7 +198,8 @@ private:
   // ---------------------------------------------------------------------
   // Internal Helpers
   // ---------------------------------------------------------------------
-
+  static constexpr double Q14_TO_RAD = (90.0 / 16384.0) * (M_PI / 180.0);
+  static constexpr double TWO_PI = 2.0 * M_PI;
   /**
    * @brief Initialize and validate node parameters.
    *
@@ -214,8 +214,7 @@ private:
    * Declare the parameter and immediately assign its value to the variable
    * The current value of 'variable' is used as the default value
    */
-  template <typename T>
-  void init_param(const std::string &name, T &variable) {
+  template <typename T> void init_param(const std::string &name, T &variable) {
     variable = this->declare_parameter<T>(name, variable);
   }
 
@@ -268,8 +267,8 @@ private:
   // ---------------------------------------------------------------------
   // Inline helpers
   // ---------------------------------------------------------------------
-  inline float raySegmentIntersection(
-    double angle, const RpPoint& p1, const RpPoint& p2, double eps = 1e-9) {
+  inline float raySegmentIntersection(double angle, const RpPoint &p1,
+                                      const RpPoint &p2, double eps = 1e-9) {
 
     const double vx = std::cos(angle);
     const double vy = std::sin(angle);
@@ -279,7 +278,8 @@ private:
     // Determinant (v cross w)
     const double det = vx * dy - vy * dx;
 
-    if (std::abs(det) < eps) return std::numeric_limits<float>::infinity();
+    if (std::abs(det) < eps)
+      return std::numeric_limits<float>::infinity();
 
     // t: distance along the ray, R(t) = origin + t*v
     // u: distance along the segment, S(u) = p1 + u*w
@@ -288,14 +288,13 @@ private:
     double u = (p1.x * vy - p1.y * vx) / det;
 
     if (t > 0 && u >= 0.0 && u <= 1.0) {
-        return static_cast<float>(t);
+      return static_cast<float>(t);
     }
 
     return std::numeric_limits<float>::infinity();
   }
 
-  inline uint8_t scaleIntensity(float intensity, float min, float max)
-  {
+  inline uint8_t scaleIntensity(float intensity, float min, float max) {
     const float denom = max - min;
     if (denom <= 0.0f) {
       return 0;
@@ -320,10 +319,10 @@ private:
     /// Serial device path to the RPLIDAR (e.g., "/dev/ttyUSB0").
     /// The most natural default value without udev
     /// The YAML file default vaule is "/dev/rplidar"
-    std::string serial_port = "/dev/ttyUSB0";
+    std::string serial_port;
 
     /// Serial baudrate used to communicate with the RPLIDAR.
-    int serial_baudrate = 1000000;
+    int serial_baudrate;
 
     /// Frame ID used in published ROS messages.
     std::string frame_id = "laser_frame";
