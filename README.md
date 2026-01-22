@@ -99,3 +99,17 @@ This driver uses a **3-Layer Design** to decouple ROS 2 logic from the vendor SD
 
 
 Based on the original work by RoboPeak & Slamtec.
+
+---
+
+## 🤖 AI-Assisted Development Disclosure
+
+In compliance with the [OSRF Policy on the Use of Generative AI in Contributions](https://github.com/openrobotics/osrf-policies-and-procedures/blob/main/OSRF%20Policy%20on%20the%20Use%20of%20Generative%20Tools%20(%E2%80%9CGenerative%20AI%E2%80%9D)%20in%20Contributions.md) (Effective May 2025), I explicitly disclose the use of Generative AI tools in the development of this driver.
+
+* **Tools Used:**
+    * **Google Gemini / ChatGPT (LLMs):** Used for generating boilerplate code, formatting documentation, and initial refactoring suggestions.
+* **Verification:**
+    * All AI-generated content has been **manually reviewed, tested, and verified** by the maintainer.
+    * The logic, memory safety (C++17 standards), and ROS 2 lifecycle state transitions have been rigorously checked to ensure system stability.
+* **Note:**
+    * Future contributions will strictly follow the `Generated-by:` tag convention in commit messages as per the OSRF guidelines.
