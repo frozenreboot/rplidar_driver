@@ -142,14 +142,13 @@ RPlidarNode::on_configure(const rclcpp_lifecycle::State &) {
   // 4. QoS setup for LaserScan publisher
   // ------------------------------------------------------------------------
   std::string qos_policy;
-  this->get_parameter_or("qos_profile", qos_policy, std::string("sensor_data"));
 
   rclcpp::QoS qos_profile = rclcpp::SensorDataQoS();
 
-  if (qos_policy == "sensor_data") {
+  if (params_.qos_policy == "sensor_data") {
     RCLCPP_INFO(this->get_logger(),
                 "[QoS] Policy: rmw_qos_profile_sensor_data");
-  } else if (qos_policy == "services_default") {
+  } else if (params_.qos_policy == "services_default") {
     qos_profile = rclcpp::ServicesQoS();
     RCLCPP_INFO(this->get_logger(),
                 "[QoS] Policy: rmw_qos_profile_services_default");
@@ -291,6 +290,7 @@ void RPlidarNode::init_parameters() {
   init_param("use_intensities", params_.use_intensities);
   init_param("intensities_as_angles", params_.intensities_as_angles);
   init_param("angle_offset", params_.angle_offset);
+  init_param("qos_policy", params_.qos_policy);
 
   // Dynamic ones, don't forget to check them in the callback
   init_param("scan_mode", params_.scan_mode);

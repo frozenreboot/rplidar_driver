@@ -370,6 +370,9 @@ private:
     // If true, uses intensities array as actual angles reported by the driver.
     // use_intensities parameter must be enabled to use this.
     bool intensities_as_angles = false;
+
+    // QoS policy for the publishers
+    std::string qos_policy = "sensor_data";
   } params_;
 
   // ---------------------------------------------------------------------
