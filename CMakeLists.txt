@@ -18,46 +18,42 @@ find_package(diagnostic_updater REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 # =========================================================
-# 2. Build SDK (Static Library)
-# =========================================================
-file(GLOB SDK_SOURCES
-    "src/sdk/src/*.cpp"
-    "src/sdk/src/hal/*.cpp"
-    "src/sdk/src/dataunpacker/*.cpp"
-    "src/sdk/src/dataunpacker/unpacker/*.cpp"
-    "src/sdk/src/arch/linux/*.cpp"
-)
+file(
+  GLOB
+  SDK_SOURCES
+  "src/sdk/src/*.cpp"
+  "src/sdk/src/hal/*.cpp"
+  "src/sdk/src/dataunpacker/*.cpp"
+  "src/sdk/src/dataunpacker/unpacker/*.cpp"
+  "src/sdk/src/arch/linux/*.cpp")
 
 add_library(rplidar_sdk STATIC ${SDK_SOURCES})
 set_target_properties(rplidar_sdk PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-target_include_directories(rplidar_sdk PUBLIC
-  src/sdk/include
-  src/sdk/src
-)
+target_include_directories(rplidar_sdk PUBLIC src/sdk/include src/sdk/src)
 
 # =========================================================
-# 3. Build Component (Shared Library)
+# 1. Build Component (Shared Library)
 # =========================================================
-# Create a shared library containing the node logic.
-# This allows the node to be loaded into a container process for zero-copy communication.
-add_library(rplidar_node_component SHARED
-  src/rplidar_node.cpp
-  src/lidar_driver_wrapper.cpp
-)
+# Create a shared library containing the node logic. This allows the node to be
+# loaded into a container process for zero-copy communication.
+add_library(rplidar_node_component SHARED src/rplidar_node.cpp
+                                          src/lidar_driver_wrapper.cpp)
 
-target_include_directories(rplidar_node_component PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
-)
+target_include_directories(
+  rplidar_node_component
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
 
 # Link against the RPLIDAR SDK
 target_link_libraries(rplidar_node_component rplidar_sdk)
 
 # Link ROS 2 dependencies
-ament_target_dependencies(rplidar_node_component
+ament_target_dependencies(
+  rplidar_node_component
   rclcpp
   rclcpp_components
   rclcpp_lifecycle
@@ -66,48 +62,64 @@ ament_target_dependencies(rplidar_node_component
   diagnostic_updater
   tf2
   tf2_ros
-  geometry_msgs
-)
+  geometry_msgs)
 
 # Register the component to make it discoverable by rclcpp_components
 rclcpp_components_register_nodes(rplidar_node_component "RPlidarNode")
 
 # =========================================================
-# 4. Build Standalone Executable
+# 1. Build Standalone Executable
 # =========================================================
 # Create an executable wrapper for standalone usage (e.g., 'ros2 run ...').
 add_executable(rplidar_node src/standalone_main.cpp)
 
 # Link against the component library to avoid code duplication
 target_link_libraries(rplidar_node rplidar_node_component)
-ament_target_dependencies(rplidar_node rclcpp rclcpp_lifecycle rclcpp_components)
+ament_target_dependencies(rplidar_node rclcpp rclcpp_lifecycle
+                          rclcpp_components)
 
 # =========================================================
-# 5. Install Rules
+# 1. Install Rules
 # =========================================================
 # Install the shared library (Component)
-install(TARGETS rplidar_node_component
+install(
+  TARGETS rplidar_node_component
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
-)
+  RUNTIME DESTINATION bin)
 
 # Install the executable
-install(TARGETS rplidar_node
-  DESTINATION lib/${PROJECT_NAME}
-)
+install(TARGETS rplidar_node DESTINATION lib/${PROJECT_NAME})
 
 # Install headers
-install(DIRECTORY include/
-  DESTINATION include/${PROJECT_NAME}
-)
+install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
 
 # Install launch files, parameters, and configurations
-install(DIRECTORY
-  launch
-  param
-  config
-  DESTINATION share/${PROJECT_NAME}
-)
+install(DIRECTORY launch param config DESTINATION share/${PROJECT_NAME})
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
 
+  # Linting Tests (skipped in this phase)
+  list(
+    APPEND
+    AMENT_LINT_AUTO_EXCLUDE
+    ament_cmake_copyright
+    ament_cmake_cpplint
+    ament_cmake_uncrustify
+    ament_cmake_flake8
+    ament_cmake_pep257)
+  ament_lint_auto_find_test_dependencies()
+
+  #Google Test (Unit Test) Setup
+  find_package(ament_cmake_gtest REQUIRED)
+
+  ament_add_gtest(test_rplidar_wrapper test/test_rplidar_wrapper.cpp)
+  target_include_directories(test_rplidar_wrapper PUBLIC include)
+
+  ament_add_gtest(test_rplidar_node test/test_rplidar_node.cpp)
+  target_include_directories(test_rplidar_node PUBLIC include)
+  target_link_libraries(test_rplidar_wrapper rplidar_node_component)
+  target_link_libraries(test_rplidar_node rplidar_node_component)
+  ament_target_dependencies(test_rplidar_wrapper rclcpp tf2 tf2_ros tf2_geometry_msgs)
+endif()
 ament_package()
