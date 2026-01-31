@@ -1,5 +1,9 @@
 # 🛡️ Robust RPLIDAR ROS 2 Driver (Industrial-Grade)
 
+> [!CAUTION]
+> **BETA VERSION**
+> Please use with caution in production environments. Issues and PRs are highly welcome!
+
 [![ROS2 Jazzy](https://img.shields.io/badge/ROS2-Jazzy-orange.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/jazzy/)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg?style=flat-square&logo=c%2B%2B)](https://isocpp.org/)
 [![License](https://img.shields.io/badge/License-BSD--2--Clause-green.svg?style=flat-square)](https://opensource.org/licenses/BSD-2-Clause)
