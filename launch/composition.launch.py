@@ -50,11 +50,11 @@ Note:
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.actions import ComposableNodeContainer, LoadComposableNodes
 from launch_ros.descriptions import ComposableNode
 from launch.actions import DeclareLaunchArgument, GroupAction
-from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
@@ -125,7 +125,7 @@ def generate_launch_description():
     )
 
     load_composable_node_wo_container = GroupAction(
-        condition=IfCondition(PythonExpression(["not ", provide_a_container])),
+        condition=UnlessCondition(provide_a_container),
         actions=[
             LoadComposableNodes(
                 target_container=container_name_full,
