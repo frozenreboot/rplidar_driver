@@ -173,7 +173,7 @@ def generate_launch_description() -> LaunchDescription:
     angle_offset_arg = DeclareLaunchArgument(
         "angle_offset",
         default_value="0.0",
-        description="Angle offset in degrees (e.g., 180.0 for A1 fix). Overrides YAML.",
+        description="Angle offset in radian (e.g., 3.1415926 for A1 fix). Overrides YAML.",
     )
     # -------------------------------------------------------------------------
     # 2. Lifecycle Node Definition

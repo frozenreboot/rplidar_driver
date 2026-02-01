@@ -90,11 +90,7 @@ def generate_launch_description() -> LaunchDescription:
         default_value=os.path.join(share_dir, "param", "rplidar.yaml"),
         description="Path to the ROS 2 parameters file to use.",
     )
-    angle_offset_arg = DeclareLaunchArgument(
-        "angle_offset",
-        default_value="0.0",
-        description="Angle offset in degrees (e.g., 180.0 for A1 fix). Overrides YAML.",
-    )
+
     # YAML file is Single Source of Truth to avoid overriding issues.
     # -------------------------------------------------------------------------
     # 2. Lifecycle Node Definition
@@ -148,7 +144,6 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             params_file_arg,
-            angle_offset_arg,
             driver_node,
             configure_event,
             activate_event,
