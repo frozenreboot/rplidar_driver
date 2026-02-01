@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Clarified that the `angle_offset` parameter is specified in **radians**, following
+  [REP-103 (Standard Units of Measure and Coordinate Conventions)](https://www.ros.org/reps/rep-0103.html).
+  Previous versions effectively interpreted this parameter as degrees.
 
 ## [1.3.0] - 2026-01-18
 ### Added
