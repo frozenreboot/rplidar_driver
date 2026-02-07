@@ -411,37 +411,64 @@ void RealLidarDriver::reset() {
 }
 
 // ============================================================================
-// [Dummy Lidar Driver Implementation]
+// [Dummy Lidar Driver Implementation - Renamed Enum Version]
 // ============================================================================
 
 bool DummyLidarDriver::connect(const std::string &, sl_u32, bool) {
+  current_state_ = MockDriverState::CONNECTED;
   return true;
 }
 
-void DummyLidarDriver::disconnect() {}
+void DummyLidarDriver::disconnect() {
+  current_state_ = MockDriverState::DISCONNECTED;
+}
 
-bool DummyLidarDriver::isConnected() { return true; }
+bool DummyLidarDriver::isConnected() {
+  return current_state_ != MockDriverState::DISCONNECTED;
+}
 
-int DummyLidarDriver::getHealth() { return 0; }
+int DummyLidarDriver::getHealth() {
+  return (current_state_ != MockDriverState::DISCONNECTED) ? 0 : 2;
+}
 
-void DummyLidarDriver::reset() {}
+void DummyLidarDriver::reset() {
+  if (current_state_ == MockDriverState::SCANNING) {
+    current_state_ = MockDriverState::CONNECTED;
+  }
+}
 
-bool DummyLidarDriver::start_motor(std::string, uint16_t) { return true; }
+bool DummyLidarDriver::start_motor(std::string, uint16_t) {
+  if (current_state_ != MockDriverState::CONNECTED) {
+    return false;
+  }
 
-void DummyLidarDriver::stop_motor() {}
+  current_state_ = MockDriverState::SCANNING;
+  return true;
+}
+
+void DummyLidarDriver::stop_motor() {
+  if (current_state_ == MockDriverState::SCANNING) {
+    current_state_ = MockDriverState::CONNECTED;
+  }
+}
 
 void DummyLidarDriver::detect_and_init_strategy() {}
 
 void DummyLidarDriver::print_summary() {
-  std::cout << "[Dummy] Virtual RPLIDAR device ready." << std::endl;
+  std::cout << "[Dummy] Virtual RPLIDAR device ready (MockState-based)."
+            << std::endl;
 }
 
 float DummyLidarDriver::get_hw_max_distance() const { return 40.0f; }
 
 bool DummyLidarDriver::grab_scan_data(
     std::vector<sl_lidar_response_measurement_node_hq_t> &nodes) {
-  nodes.clear();
 
+  if (current_state_ != MockDriverState::SCANNING) {
+    return false;
+  }
+
+  nodes.clear();
   const int count = 360;
   nodes.reserve(count);
 
@@ -461,11 +488,11 @@ bool DummyLidarDriver::grab_scan_data(
         0.5f * std::sin(static_cast<float>(i) * 3.141592f / 180.0f + phase);
 
     node.dist_mm_q2 = static_cast<sl_u32>(dist_meters * 1000.0f * 4.0f);
-    node.quality = 200;
+    node.quality = 47;
 
     nodes.push_back(node);
   }
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
   return true;
 }
