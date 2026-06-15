@@ -39,7 +39,7 @@ Please open an issue with the title `[Experiment] Your_Robot_Name` and include:
 2. **Recovery Log:** (Copy paste the terminal output when you unplug/replug)
 3. **Screenshot:** `rqt_graph` or `rviz2`
 
-👉 [**Submit your Experiment Report Here**](https://github.com/frozenreboot/rplidar_ros2_driver/issues/new)
+👉 [**Submit your Experiment Report Here**](https://github.com/frozenreboot/rplidar_driver/issues/new)
 
 ---
 
@@ -48,7 +48,7 @@ Please open an issue with the title `[Experiment] Your_Robot_Name` and include:
 ### 1. Installation
 ```bash
 cd ~/ros2_ws/src
-git clone https://github.com/frozenreboot/rplidar_ros2_driver.git
+git clone https://github.com/frozenreboot/rplidar_driver.git
 cd ..
 
 # Install dependencies
@@ -64,7 +64,7 @@ colcon build --symlink-install
 
 
 ```Bash
-ros2 launch rplidar_ros2_driver rplidar.launch.py serial_port:=/dev/ttyUSB0
+ros2 launch rplidar_driver rplidar.launch.py serial_port:=/dev/ttyUSB0
 ```
 
 ### 3. Dynamic Reconfigure (Runtime)

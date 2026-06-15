@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(rplidar_ros2_driver)
+project(rplidar_driver)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)

@@ -79,7 +79,7 @@ def generate_launch_description() -> LaunchDescription:
       - qos_reliability : Reliability QoS policy for the LaserScan publisher
                           (e.g., 'best_effort' or 'reliable')
     """
-    share_dir = get_package_share_directory("rplidar_ros2_driver")
+    share_dir = get_package_share_directory("rplidar_driver")
     node_name = "rplidar_node"
     # -------------------------------------------------------------------------
     # 1. Launch Arguments
@@ -96,7 +96,7 @@ def generate_launch_description() -> LaunchDescription:
     # 2. Lifecycle Node Definition
     # -------------------------------------------------------------------------
     driver_node = LifecycleNode(
-        package="rplidar_ros2_driver",
+        package="rplidar_driver",
         executable="rplidar_node",
         name=node_name,
         namespace="",

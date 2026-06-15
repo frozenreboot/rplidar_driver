@@ -179,7 +179,7 @@ def generate_launch_description() -> LaunchDescription:
     # 2. Lifecycle Node Definition
     # -------------------------------------------------------------------------
     driver_node = LifecycleNode(
-        package="rplidar_ros2_driver",
+        package="rplidar_driver",
         executable="rplidar_node",
         name=LaunchConfiguration("node_name"),
         namespace=LaunchConfiguration("namespace"),
