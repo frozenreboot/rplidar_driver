@@ -58,7 +58,7 @@ from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
-    share_dir = get_package_share_directory("rplidar_ros2_driver")
+    share_dir = get_package_share_directory("rplidar_driver")
     params_file = os.path.join(share_dir, "param", "rplidar.yaml")
 
     namespace_arg = DeclareLaunchArgument(
@@ -107,7 +107,7 @@ def generate_launch_description():
     container_name_full = [namespace, "/", container_name]
 
     rplidar_component = ComposableNode(
-        package="rplidar_ros2_driver",
+        package="rplidar_driver",
         plugin="RPlidarNode",  # name of macro-registered c++
         name=component_name,
         namespace=namespace,
