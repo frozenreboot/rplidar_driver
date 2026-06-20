@@ -55,8 +55,20 @@
 #ifndef RPLIDAR_NODE_HPP_
 #define RPLIDAR_NODE_HPP_
 
+#if __has_include(<tf2/LinearMath/Quaternion.hpp>)
+#include <tf2/LinearMath/Quaternion.hpp>
+#elif __has_include(<tf2/LinearMath/Quaternion.h>)
 #include <tf2/LinearMath/Quaternion.h>
+#else
+#error "No tf2 Quaternion header found"
+#endif
+#if __has_include(<tf2_ros/static_transform_broadcaster.hpp>)
+#include <tf2_ros/static_transform_broadcaster.hpp>
+#elif __has_include(<tf2_ros/static_transform_broadcaster.h>)
 #include <tf2_ros/static_transform_broadcaster.h>
+#else
+#error "No tf2_ros static_transform_broadcaster header found"
+#endif
 
 #include <algorithm>
 #include <cmath>

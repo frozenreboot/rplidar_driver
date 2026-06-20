@@ -49,20 +49,21 @@ target_include_directories(
     $<INSTALL_INTERFACE:include>)
 
 # Link against the RPLIDAR SDK
-target_link_libraries(rplidar_node_component rplidar_sdk)
+target_link_libraries(rplidar_node_component PUBLIC rplidar_sdk)
 
 # Link ROS 2 dependencies
-ament_target_dependencies(
+target_link_libraries(
   rplidar_node_component
-  rclcpp
-  rclcpp_components
-  rclcpp_lifecycle
-  sensor_msgs
-  std_srvs
-  diagnostic_updater
-  tf2
-  tf2_ros
-  geometry_msgs)
+  PUBLIC
+    rclcpp::rclcpp
+    rclcpp_components::component
+    rclcpp_lifecycle::rclcpp_lifecycle
+    ${sensor_msgs_TARGETS}
+    ${std_srvs_TARGETS}
+    diagnostic_updater::diagnostic_updater
+    tf2::tf2
+    tf2_ros::tf2_ros
+    ${geometry_msgs_TARGETS})
 
 # Register the component to make it discoverable by rclcpp_components
 rclcpp_components_register_nodes(rplidar_node_component "RPlidarNode")
@@ -74,9 +75,7 @@ rclcpp_components_register_nodes(rplidar_node_component "RPlidarNode")
 add_executable(rplidar_node src/standalone_main.cpp)
 
 # Link against the component library to avoid code duplication
-target_link_libraries(rplidar_node rplidar_node_component)
-ament_target_dependencies(rplidar_node rclcpp rclcpp_lifecycle
-                          rclcpp_components)
+target_link_libraries(rplidar_node PRIVATE rplidar_node_component)
 
 # =========================================================
 # 1. Install Rules
@@ -115,11 +114,16 @@ if(BUILD_TESTING)
 
   ament_add_gtest(test_rplidar_wrapper test/test_rplidar_wrapper.cpp)
   target_include_directories(test_rplidar_wrapper PUBLIC include)
+  target_link_libraries(
+    test_rplidar_wrapper
+    rplidar_node_component
+    rclcpp::rclcpp
+    tf2::tf2
+    tf2_ros::tf2_ros
+    ${tf2_geometry_msgs_TARGETS})
 
   ament_add_gtest(test_rplidar_node test/test_rplidar_node.cpp)
   target_include_directories(test_rplidar_node PUBLIC include)
-  target_link_libraries(test_rplidar_wrapper rplidar_node_component)
   target_link_libraries(test_rplidar_node rplidar_node_component)
-  ament_target_dependencies(test_rplidar_wrapper rclcpp tf2 tf2_ros tf2_geometry_msgs)
 endif()
 ament_package()
