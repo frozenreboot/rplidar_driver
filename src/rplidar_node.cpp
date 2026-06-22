@@ -781,7 +781,7 @@ void RPlidarNode::publish_scan(
 
 rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
     const std::vector<rclcpp::Parameter> &parameters) {
-  std::lock_guard<std::mutex> lock(driver_mutex_);
+  std::unique_lock<std::mutex> lock(driver_mutex_);
 
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
@@ -876,7 +876,9 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
 
       // Stop the motor before switching modes.
       driver_->stop_motor();
+      lock.unlock();
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      lock.lock();
 
       // Attempt restart with new mode.
       if (driver_->start_motor(new_mode, params_.rpm)) {
