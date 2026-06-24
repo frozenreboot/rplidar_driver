@@ -499,4 +499,4 @@ bool DummyLidarDriver::grab_scan_data(
   return true;
 }
 
-}  // namespace rplidar_driver
+} // namespace rplidar_driver

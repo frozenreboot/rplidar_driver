@@ -449,6 +449,6 @@ private:
   bool initial_reset_required_ = true;
 };
 
-}  // namespace rplidar_driver
+} // namespace rplidar_driver
 
 #endif // RPLIDAR_NODE_HPP_

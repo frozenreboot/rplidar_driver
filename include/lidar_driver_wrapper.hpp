@@ -457,6 +457,6 @@ private:
   MockDriverState current_state_ = MockDriverState::DISCONNECTED;
 };
 
-}  // namespace rplidar_driver
+} // namespace rplidar_driver
 
 #endif // LIDAR_DRIVER_WRAPPER_HPP

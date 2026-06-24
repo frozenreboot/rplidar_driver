@@ -915,7 +915,7 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
   return result;
 }
 
-}  // namespace rplidar_driver
+} // namespace rplidar_driver
 
 // ============================================================================
 // registration with rclcpp_components
