@@ -108,7 +108,7 @@ def generate_launch_description():
 
     rplidar_component = ComposableNode(
         package="rplidar_driver",
-        plugin="RPlidarNode",  # name of macro-registered c++
+        plugin="rplidar_driver::RPlidarNode",  # name of macro-registered c++
         name=component_name,
         namespace=namespace,
         parameters=[LaunchConfiguration("params_fullpath")],
