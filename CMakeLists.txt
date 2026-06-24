@@ -13,7 +13,6 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(std_srvs REQUIRED)
 find_package(diagnostic_updater REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -58,7 +57,6 @@ target_link_libraries(
     rclcpp_components::component
     rclcpp_lifecycle::rclcpp_lifecycle
     ${sensor_msgs_TARGETS}
-    ${std_srvs_TARGETS}
     diagnostic_updater::diagnostic_updater
     tf2::tf2
     tf2_ros::tf2_ros
