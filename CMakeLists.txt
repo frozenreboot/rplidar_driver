@@ -17,6 +17,7 @@ find_package(diagnostic_updater REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(lifecycle_msgs REQUIRED)
 
 # =========================================================
 file(
@@ -60,7 +61,8 @@ target_link_libraries(
     diagnostic_updater::diagnostic_updater
     tf2::tf2
     tf2_ros::tf2_ros
-    ${geometry_msgs_TARGETS})
+    ${geometry_msgs_TARGETS}
+    ${lifecycle_msgs_TARGETS})
 
 # Register the component to make it discoverable by rclcpp_components
 rclcpp_components_register_nodes(rplidar_node_component "RPlidarNode")
