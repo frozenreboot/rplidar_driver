@@ -10,9 +10,9 @@
 // ============================================================================
 class MockDriverTest : public ::testing::Test {
 protected:
-  std::unique_ptr<LidarDriverInterface> driver;
+  std::unique_ptr<rplidar_driver::LidarDriverInterface> driver;
 
-  void SetUp() override { driver = std::make_unique<DummyLidarDriver>(); }
+  void SetUp() override { driver = std::make_unique<rplidar_driver::DummyLidarDriver>(); }
 
   void TearDown() override {
     if (driver && driver->isConnected()) {

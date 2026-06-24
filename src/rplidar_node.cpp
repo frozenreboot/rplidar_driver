@@ -67,9 +67,9 @@
 
 #include <lifecycle_msgs/msg/state.hpp>
 
-#include "rclcpp_components/register_node_macro.hpp"
-
 using namespace std::chrono_literals;
+
+namespace rplidar_driver {
 
 // ============================================================================
 // Constructor / Destructor
@@ -915,8 +915,11 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
   return result;
 }
 
+}  // namespace rplidar_driver
+
 // ============================================================================
 // registration with rclcpp_components
 // ============================================================================
 
-RCLCPP_COMPONENTS_REGISTER_NODE(RPlidarNode)
+#include "rclcpp_components/register_node_macro.hpp"
+RCLCPP_COMPONENTS_REGISTER_NODE(rplidar_driver::RPlidarNode)
