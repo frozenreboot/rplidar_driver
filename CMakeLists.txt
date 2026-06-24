@@ -66,16 +66,10 @@ target_link_libraries(
     ${geometry_msgs_TARGETS})
 
 # Register the component to make it discoverable by rclcpp_components
-rclcpp_components_register_nodes(rplidar_node_component "RPlidarNode")
-
-# =========================================================
-# 1. Build Standalone Executable
-# =========================================================
-# Create an executable wrapper for standalone usage (e.g., 'ros2 run ...').
-add_executable(rplidar_node src/standalone_main.cpp)
-
-# Link against the component library to avoid code duplication
-target_link_libraries(rplidar_node PRIVATE rplidar_node_component)
+rclcpp_components_register_node(rplidar_node_component
+  PLUGIN "rplidar_driver::RPlidarNode"
+  EXECUTOR "SingleThreadedExecutor"
+  EXECUTABLE "rplidar_node")
 
 # =========================================================
 # 1. Install Rules
@@ -86,9 +80,6 @@ install(
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
-
-# Install the executable
-install(TARGETS rplidar_node DESTINATION lib/${PROJECT_NAME})
 
 # Install headers
 install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
