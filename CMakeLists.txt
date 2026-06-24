@@ -18,7 +18,6 @@ find_package(diagnostic_updater REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(tf2_geometry_msgs REQUIRED)
 
 # =========================================================
 file(
@@ -96,21 +95,13 @@ install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
 # Install launch files, parameters, and configurations
 install(DIRECTORY launch param config DESTINATION share/${PROJECT_NAME})
 if(BUILD_TESTING)
+  # Linting Tests
   find_package(ament_lint_auto REQUIRED)
-
-  # Linting Tests (skipped in this phase)
-  list(
-    APPEND
-    AMENT_LINT_AUTO_EXCLUDE
-    ament_cmake_copyright
-    ament_cmake_cpplint
-    ament_cmake_uncrustify
-    ament_cmake_flake8
-    ament_cmake_pep257)
   ament_lint_auto_find_test_dependencies()
 
   #Google Test (Unit Test) Setup
   find_package(ament_cmake_gtest REQUIRED)
+  find_package(tf2_geometry_msgs REQUIRED)
 
   ament_add_gtest(test_rplidar_wrapper test/test_rplidar_wrapper.cpp)
   target_include_directories(test_rplidar_wrapper PUBLIC include)
@@ -120,7 +111,7 @@ if(BUILD_TESTING)
     rclcpp::rclcpp
     tf2::tf2
     tf2_ros::tf2_ros
-    ${tf2_geometry_msgs_TARGETS})
+    tf2_geometry_msgs::tf2_geometry_msgs)
 
   ament_add_gtest(test_rplidar_node test/test_rplidar_node.cpp)
   target_include_directories(test_rplidar_node PUBLIC include)
