@@ -89,11 +89,9 @@ install(
 # Install the executable
 install(TARGETS rplidar_node DESTINATION lib/${PROJECT_NAME})
 
-# Install headers
-install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
-
 # Install launch files, parameters, and configurations
 install(DIRECTORY launch param config DESTINATION share/${PROJECT_NAME})
+
 if(BUILD_TESTING)
   # Linting Tests
   find_package(ament_lint_auto REQUIRED)
