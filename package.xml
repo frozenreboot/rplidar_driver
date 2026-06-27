@@ -21,21 +21,19 @@
   <depend>rclcpp_lifecycle</depend>
   <depend>rclcpp_components</depend>
   <depend>sensor_msgs</depend>
-  <depend>std_srvs</depend>
   <depend>diagnostic_updater</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
   <depend>geometry_msgs</depend>
+  <depend>lifecycle_msgs</depend>
+
   <exec_depend>launch_ros</exec_depend>
-  <exec_depend>lifecycle_msgs</exec_depend>
+
   <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_cmake_cppcheck</test_depend>
   <test_depend>ament_cmake_gtest</test_depend>
-  <test_depend>launch_testing</test_depend>
-  <test_depend>launch_testing_ament_cmake</test_depend>
-  <test_depend>launch_testing_ros</test_depend>
-  <test_depend>tf2</test_depend>
-  <test_depend>tf2_ros</test_depend>
+  <test_depend>ament_cmake_lint_cmake</test_depend>
+  <test_depend>ament_cmake_xmllint</test_depend>
   <test_depend>tf2_geometry_msgs</test_depend>
 
   <export>
