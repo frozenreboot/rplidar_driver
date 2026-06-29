@@ -90,6 +90,8 @@
 
 #include "lidar_driver_wrapper.hpp"
 
+namespace rplidar_driver {
+
 enum class DriverState { CONNECTING, CHECK_HEALTH, WARMUP, RUNNING, RESETTING };
 /**
  * @class RPlidarNode
@@ -446,5 +448,7 @@ private:
   // For some newer models, rpm should be set after grabbing the first scan.
   bool initial_reset_required_ = true;
 };
+
+} // namespace rplidar_driver
 
 #endif // RPLIDAR_NODE_HPP_

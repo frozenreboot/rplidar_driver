@@ -64,6 +64,8 @@
 #include "sl_lidar.h"
 #include "sl_lidar_driver.h"
 
+namespace rplidar_driver {
+
 /**
  * @enum ProtocolType
  * @brief Describes the protocol / behavior family of the RPLIDAR model.
@@ -384,8 +386,6 @@ private:
  *  - Simplify integration tests and continuous integration setups
  */
 
-#pragma once
-
 // Definition Mock driver states
 enum class MockDriverState {
   DISCONNECTED, // Init
@@ -456,5 +456,7 @@ private:
   // Use Enum state
   MockDriverState current_state_ = MockDriverState::DISCONNECTED;
 };
+
+} // namespace rplidar_driver
 
 #endif // LIDAR_DRIVER_WRAPPER_HPP

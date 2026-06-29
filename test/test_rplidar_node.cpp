@@ -36,7 +36,7 @@ TEST_F(RplidarNodeTest, FullLifecycleTest) {
   // Set a dummy serial port (not used in dummy mode, but required for init)
   options.append_parameter_override("serial_port", "/dev/null");
 
-  auto node = std::make_shared<RPlidarNode>(options);
+  auto node = std::make_shared<rplidar_driver::RPlidarNode>(options);
 
   // Verify initial state
   EXPECT_EQ(node->get_current_state().id(), State::PRIMARY_STATE_UNCONFIGURED);
@@ -91,7 +91,7 @@ TEST_F(RplidarNodeTest, ScanPublicationCheck) {
   options.append_parameter_override("dummy_mode", true);
   options.append_parameter_override("frame_id", "test_laser_link");
 
-  auto node = std::make_shared<RPlidarNode>(options);
+  auto node = std::make_shared<rplidar_driver::RPlidarNode>(options);
 
   // Quickly transition to ACTIVE state
   node->trigger_transition(

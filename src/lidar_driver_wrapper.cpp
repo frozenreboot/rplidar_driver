@@ -70,6 +70,8 @@
 
 using namespace sl;
 
+namespace rplidar_driver {
+
 // ============================================================================
 // [Real Lidar Driver Implementation]
 // ============================================================================
@@ -496,3 +498,5 @@ bool DummyLidarDriver::grab_scan_data(
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
   return true;
 }
+
+} // namespace rplidar_driver
