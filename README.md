@@ -1,5 +1,6 @@
 # 🛡️ Robust RPLIDAR ROS 2 Driver
 
+[![ROS 2 Humble](https://img.shields.io/badge/ROS2-Humble-blue.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/humble/)
 [![ROS 2 Jazzy](https://img.shields.io/badge/ROS2-Jazzy-orange.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/jazzy/)
 [![ROS 2 Lyrical](https://img.shields.io/badge/ROS2-Lyrical-blueviolet.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/lyrical/)
 [![ROS 2 Rolling](https://img.shields.io/badge/ROS2-Rolling-lightgrey.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/rolling/)
@@ -41,7 +42,7 @@ will be able to install it directly:
 sudo apt install ros-${ROS_DISTRO}-rplidar-driver
 ```
 
-Supported distros: **Jazzy**, **Lyrical**, and **Rolling**.
+Supported distros: **Humble**, **Jazzy**, **Lyrical**, and **Rolling**.
 
 ### Option B — Build from source
 

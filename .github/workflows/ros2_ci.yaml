@@ -15,6 +15,8 @@ jobs:
         ros_distribution:
           - humble
           - jazzy
+          - lyrical
+          - rolling
         include:
           # Humble Ubuntu 22.04 (Jammy)
           - ros_distribution: humble
@@ -22,6 +24,12 @@ jobs:
           # Jazzy Ubuntu 24.04 (Noble)
           - ros_distribution: jazzy
             docker_image: osrf/ros:jazzy-desktop
+          # Lyrical Ubuntu 26.04 (Resolute)
+          - ros_distribution: lyrical
+            docker_image: osrf/ros:lyrical-desktop
+          # Rolling (latest supported Ubuntu)
+          - ros_distribution: rolling
+            docker_image: osrf/ros:rolling-desktop
 
     container:
       image: ${{ matrix.docker_image }}
@@ -47,4 +55,3 @@ jobs:
                 "mixin": ["coverage-gcc"]
               }
             }
-          colcon-mixin-name: coverage-gcc
