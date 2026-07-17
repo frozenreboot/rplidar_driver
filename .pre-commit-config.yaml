@@ -23,4 +23,4 @@ repos:
         entry: "[\x80-\uffff]"
         language: pygrep
         types: [text]
-        exclude: ^src/sdk/|^README\.md$
+        exclude: ^src/sdk/|^README\.md$|^CHANGELOG\.rst$|^GOVERNANCE\.md$|^package\.xml$

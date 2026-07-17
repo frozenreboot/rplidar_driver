@@ -6,11 +6,15 @@ This project is maintained by a small group of robotics engineers dedicated to o
 
 * **Woojin Jung (@frozenreboot)**
     * **Role:** Lead Maintainer / Author
-    * **Responsibilities:** Core implementation, Release management, Roadmap definition, Issue tracking.
+    * **Responsibilities:** Core implementation, Release decisions, Roadmap definition, Issue tracking.
 
 * **Orhan G. Hafif (@cosmicog)**
     * **Role:** Co-Maintainer / Technical Advisor
     * **Responsibilities:** Architecture review, Industrial use-case validation, Edge case analysis, Code review.
+
+* **Błażej Sowa (@bjsowa)**
+    * **Role:** Release Maintainer / Packaging Maintainer
+    * **Responsibilities:** rosdistro release process, bloom workflow, release repository management (ros2-gbp), packaging conventions, changelog format.
 
 ## Collaboration Protocol
 
