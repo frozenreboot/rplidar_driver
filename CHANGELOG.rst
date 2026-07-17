@@ -2,8 +2,8 @@
 Changelog for package rplidar_driver
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.4.0 (2026-07-17)
+------------------
 * Raised the minimum required CMake version to 3.16 and verified builds on
   ROS 2 Jazzy and Lyrical (`#38 <https://github.com/frozenreboot/rplidar_driver/issues/38>`_).
 * Refactored the node entry point to use the rclcpp_components template macro
