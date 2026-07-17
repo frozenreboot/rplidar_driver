@@ -1,51 +1,50 @@
-# 🛡️ Robust RPLIDAR ROS 2 Driver (Industrial-Grade)
+# 🛡️ Robust RPLIDAR ROS 2 Driver
 
-> [!CAUTION]
-> **BETA VERSION**
-> Please use with caution in production environments. Issues and PRs are highly welcome!
-
-[![ROS2 Jazzy](https://img.shields.io/badge/ROS2-Jazzy-orange.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/jazzy/)
+[![ROS 2 Jazzy](https://img.shields.io/badge/ROS2-Jazzy-orange.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/jazzy/)
+[![ROS 2 Lyrical](https://img.shields.io/badge/ROS2-Lyrical-blueviolet.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/lyrical/)
+[![ROS 2 Rolling](https://img.shields.io/badge/ROS2-Rolling-lightgrey.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/rolling/)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg?style=flat-square&logo=c%2B%2B)](https://isocpp.org/)
 [![License](https://img.shields.io/badge/License-BSD--2--Clause-green.svg?style=flat-square)](https://opensource.org/licenses/BSD-2-Clause)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg?style=flat-square)]()
+[![ROS 2 CI](https://github.com/frozenreboot/rplidar_driver/actions/workflows/ros2_ci.yaml/badge.svg)](https://github.com/frozenreboot/rplidar_driver/actions/workflows/ros2_ci.yaml)
 
 > **"Because the official driver shouldn't crash just because you pulled the plug."**
 
-This is a heavily refactored, **fault-tolerant** ROS 2 driver for Slamtec RPLIDAR.
-Designed with a **Lifecycle State Machine** and **Thread-Safe Architecture**, ensuring your robot keeps running even under hardware disconnection or permission failures.
+A **fault-tolerant** ROS 2 driver for Slamtec RPLIDAR, built around a
+**Lifecycle State Machine** and a **thread-safe architecture**. Your robot
+keeps running even under hardware disconnection or permission failures.
 
 ---
 
-## ⚡ Why Use This? (Table of Shame)
+## ⚡ Why Use This?
 
-| Feature | Official Slamtec ROS 2 | **This Driver (frozenreboot)** |
+Most existing RPLIDAR drivers assume the hardware never misbehaves. This
+driver assumes the opposite. Compared to the reference implementation:
+
+| Capability | Reference Driver | **This Driver** |
 | :--- | :---: | :---: |
-| **Hot-plug Recovery** | ❌ Crash / Hang | **✅ Auto-reconnect via FSM** |
-| **Permission Denied** | ❌ Silent Fail / Garbage Data | **✅ Explicit Diagnostics** |
-| **Dynamic Reconfigure** | ❌ Restart Required | **✅ Runtime RPM/Mode Update** |
-| **Zero-Copy Optimization**| ❌ N/A | **✅ Smart Pointer & Move Semantics** |
-| **Architecture** | ❌ Tight SDK Coupling | **✅ Interface-based Abstraction** |
-
----
-
-## 🧪 Call for Experiments: "Does it survive?"
-
-I need your help to validate this driver on various robots!
-If you use this driver, please **stress-test** it (e.g., unplug USB while scanning, change RPM dynamically) and share your results.
-
-### 📢 How to Submit a Report
-Please open an issue with the title `[Experiment] Your_Robot_Name` and include:
-1. **Lidar Model:** (e.g., A1, A2, S1...)
-2. **Recovery Log:** (Copy paste the terminal output when you unplug/replug)
-3. **Screenshot:** `rqt_graph` or `rviz2`
-
-👉 [**Submit your Experiment Report Here**](https://github.com/frozenreboot/rplidar_driver/issues/new)
+| **Hot-plug recovery** | Not handled | ✅ Auto-reconnect via lifecycle FSM |
+| **Permission failure reporting** | Silent failure | ✅ Explicit diagnostics |
+| **Runtime reconfiguration** | Restart required | ✅ Live RPM / scan-mode update |
+| **Component composition** | Standalone only | ✅ `rclcpp_components` support |
+| **SDK coupling** | Direct calls throughout | ✅ Interface-based abstraction layer |
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Installation
+### Option A — Binary install *(coming soon)*
+
+This package has been submitted to the ROS 2 build farm. Once it syncs, you
+will be able to install it directly:
+
+```bash
+sudo apt install ros-${ROS_DISTRO}-rplidar-driver
+```
+
+Supported distros: **Jazzy**, **Lyrical**, and **Rolling**.
+
+### Option B — Build from source
+
 ```bash
 cd ~/ros2_ws/src
 git clone https://github.com/frozenreboot/rplidar_driver.git
@@ -60,23 +59,36 @@ rosdep install --from-paths src --ignore-src -r -y
 colcon build --symlink-install
 ```
 
-### 2. Quick Launch
+### Quick Launch
 
-
-```Bash
+```bash
 ros2 launch rplidar_driver rplidar.launch.py serial_port:=/dev/ttyUSB0
 ```
 
-### 3. Dynamic Reconfigure (Runtime)
+### Dynamic Reconfigure (Runtime)
 
 You can change the motor speed without killing the node:
 
-
-```Bash
-
+```bash
 ros2 param set /rplidar_node rpm 1000
 ros2 param set /rplidar_node scan_mode DenseBoost
 ```
+
+---
+
+## 🧪 Call for Experiments: "Does it survive?"
+
+We need your help to validate this driver on various robots!
+If you use this driver, please **stress-test** it (e.g., unplug USB while
+scanning, change RPM dynamically) and share your results.
+
+### 📢 How to Submit a Report
+Please open an issue with the title `[Experiment] Your_Robot_Name` and include:
+1. **Lidar Model:** (e.g., A1, A2, S1...)
+2. **Recovery Log:** (Copy paste the terminal output when you unplug/replug)
+3. **Screenshot:** `rqt_graph` or `rviz2`
+
+👉 [**Submit your Experiment Report Here**](https://github.com/frozenreboot/rplidar_driver/issues/new)
 
 ---
 
@@ -85,22 +97,18 @@ ros2 param set /rplidar_node scan_mode DenseBoost
 This driver uses a **3-Layer Design** to decouple ROS 2 logic from the vendor SDK.
 
 - **Node Layer:** Handles Lifecycle & Parameters.
-
 - **Wrapper Layer:** Handles Threading & Mutex.
-
 - **SDK Layer:** Raw data fetching.
-
 
 ![Architecture Diagram](./doc/architecture.png)
 
 ---
 
-## 👤 Author & Maintainer
+## 👥 Maintainers
 
-- **frozenreboot** - _Initial Refactoring & Architecture Design_
-
-- Blog: [Tech Log](https://frozenreboot.github.io/)
-
+- **frozenreboot** — Architecture & core development · [Tech Log](https://frozenreboot.github.io/)
+- **cosmicog** ([@cosmicog](https://github.com/cosmicog)) — Co-maintainer
+- **Błażej Sowa** ([@bjsowa](https://github.com/bjsowa)) — Release & packaging
 
 Based on the original work by RoboPeak & Slamtec.
 
@@ -108,12 +116,14 @@ Based on the original work by RoboPeak & Slamtec.
 
 ## 🤖 AI-Assisted Development Disclosure
 
-In compliance with the [OSRF Policy on the Use of Generative AI in Contributions](https://github.com/openrobotics/osrf-policies-and-procedures/blob/main/OSRF%20Policy%20on%20the%20Use%20of%20Generative%20Tools%20(%E2%80%9CGenerative%20AI%E2%80%9D)%20in%20Contributions.md) (Effective May 2025), I explicitly disclose the use of Generative AI tools in the development of this driver.
+In compliance with the [OSRF Policy on the Use of Generative AI in Contributions](https://github.com/openrobotics/osrf-policies-and-procedures/blob/main/OSRF%20Policy%20on%20the%20Use%20of%20Generative%20Tools%20(%E2%80%9CGenerative%20AI%E2%80%9D)%20in%20Contributions.md) (Effective May 2025), we explicitly disclose the use of Generative AI tools in the development of this driver.
 
 * **Tools Used:**
-    * **Google Gemini / ChatGPT (LLMs):** Used for generating boilerplate code, formatting documentation, and initial refactoring suggestions.
+    * **Anthropic Claude:** Release engineering support, refactoring suggestions, and documentation.
+    * **Google Gemini:** Boilerplate code generation and test infrastructure scaffolding.
+    * **OpenAI ChatGPT:** Refactoring suggestions and documentation formatting.
 * **Verification:**
-    * All AI-generated content has been **manually reviewed, tested, and verified** by the maintainer.
-    * The logic, memory safety (C++17 standards), and ROS 2 lifecycle state transitions have been rigorously checked to ensure system stability.
+    * All AI-generated content has been **manually reviewed, tested, and verified** by the maintainers.
+    * The logic, memory safety, and ROS 2 lifecycle state transitions have been rigorously checked to ensure system stability.
 * **Note:**
-    * Future contributions will strictly follow the `Generated-by:` tag convention in commit messages as per the OSRF guidelines.
+    * Contributions follow the `Generated-by:` tag convention in commit messages as per the OSRF guidelines.

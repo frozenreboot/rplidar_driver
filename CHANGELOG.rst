@@ -4,16 +4,28 @@ Changelog for package rplidar_driver
 
 Forthcoming
 -----------
-
-* Added GTest-based test infrastructure, including mock driver tests and lifecycle/publication tests.
-* Added driver state and driver sequence documentation.
-* Updated README to mark the current release status as beta and document related cautions.
-* Clarified that the angle_offset parameter is specified in radians, following `REP-103 <https://www.ros.org/reps/rep-0103.html>`_.
-* Removed the angle_offset launch argument and rely on YAML parameters instead.
-* Fixed QoS parameter inconsistency by initializing the QoS parameter and applying the configured policy.
-* Added governance documentation and maintainer information.
-* Added an AI disclosure section for OSRF compliance.
-* Contributors: frozenreboot, cosmicog
+* Raised the minimum required CMake version to 3.16 and verified builds on
+  ROS 2 Jazzy and Lyrical (`#38 <https://github.com/frozenreboot/rplidar_driver/issues/38>`_).
+* Refactored the node entry point to use the rclcpp_components template macro
+  and moved the node into the ``rplidar_node`` namespace (`#36 <https://github.com/frozenreboot/rplidar_driver/issues/36>`_).
+* Cleaned up package dependencies and linter configuration, fixing test
+  dependency failures on the ROS build farm (`#35 <https://github.com/frozenreboot/rplidar_driver/issues/35>`_).
+* Fixed Rolling build compatibility (`#33 <https://github.com/frozenreboot/rplidar_driver/issues/33>`_).
+* Added a license audit documenting the vendored Slamtec SDK provenance for
+  the first rosdistro release (`#32 <https://github.com/frozenreboot/rplidar_driver/issues/32>`_).
+* Converted the changelog to REP-132 format for catkin release tools (`#31 <https://github.com/frozenreboot/rplidar_driver/issues/31>`_).
+* Renamed the package to ``rplidar_driver`` following REP-144 naming
+  guidelines (`#29 <https://github.com/frozenreboot/rplidar_driver/issues/29>`_).
+* Added GTest-based test infrastructure, including mock driver tests and
+  lifecycle/publication tests (`#20 <https://github.com/frozenreboot/rplidar_driver/issues/20>`_).
+* Clarified that the ``angle_offset`` parameter is specified in radians and
+  removed the corresponding launch argument in favor of YAML parameters
+  (`#23 <https://github.com/frozenreboot/rplidar_driver/issues/23>`_).
+* Fixed QoS parameter inconsistency by initializing the QoS parameter and
+  applying the configured policy (`#15 <https://github.com/frozenreboot/rplidar_driver/issues/15>`_).
+* Added governance documentation and an AI disclosure section for OSRF
+  compliance; added Błażej Sowa as a maintainer (`#34 <https://github.com/frozenreboot/rplidar_driver/issues/34>`_).
+* Contributors: Błażej Sowa, JWJ | frozenreboot, cosmicog, wj
 
 v1.3.0 (2026-01-18)
 -------------------
