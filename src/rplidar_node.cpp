@@ -169,7 +169,7 @@ RPlidarNode::on_configure(const rclcpp_lifecycle::State &) {
   // ------------------------------------------------------------------------
   if (params_.publish_tf) {
     tf_broadcaster_ =
-        std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
+        std::make_shared<tf2_ros::StaticTransformBroadcaster>(*this);
     geometry_msgs::msg::TransformStamped t;
 
     t.header.stamp = this->now();
