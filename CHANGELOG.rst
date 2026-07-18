@@ -2,6 +2,12 @@
 Changelog for package rplidar_driver
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fixed the Rolling build by passing the node by reference to
+  ``tf2_ros::StaticTransformBroadcaster`` (NodeInterfaces API migration).
+* Contributors: JWJ | frozenreboot
+
 1.4.0 (2026-07-17)
 ------------------
 * Raised the minimum required CMake version to 3.16 and verified builds on
