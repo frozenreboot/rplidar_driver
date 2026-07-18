@@ -2,8 +2,8 @@
 Changelog for package rplidar_driver
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.4.1 (2026-07-18)
+------------------
 * Fixed the Rolling build by passing the node by reference to
   ``tf2_ros::StaticTransformBroadcaster`` (NodeInterfaces API migration).
 * Contributors: JWJ | frozenreboot
