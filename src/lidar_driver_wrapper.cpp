@@ -260,6 +260,12 @@ bool RealLidarDriver::start_motor(std::string user_mode_pref,
     // ------------------------------------------------------------------------
     // Strategy B: Old-Type (A-Series Legacy)
     // ------------------------------------------------------------------------
+    // A-series motors are PWM-type (open-loop): the host drives raw duty,
+    // so spin-up is our responsibility. A stationary motor needs more torque
+    // to break static friction than to keep spinning, so starting cold at a
+    // low duty can leave it stalled. We kickstart at the proven 600 to
+    // guarantee spin-up; the node replays the user's configured value once
+    // the first scan confirms the motor is turning (see scan_loop RUNNING).
     drv_->setMotorSpeed(600);
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
