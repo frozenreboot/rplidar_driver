@@ -438,10 +438,16 @@ void RPlidarNode::scan_loop() {
         if (driver_->grab_scan_data(nodes)) {
           success = true;
           error_count = 0;
-          // New devices require rpm setting after some scanning
-          if (is_new_protocol_ && initial_reset_required_) {
+          // Apply the user-configured motor speed once the first scan confirms
+          // the motor is spinning. New-type devices need this because the
+          // initial setMotorSpeed() in start_motor() doesn't always stick;
+          // A-series needs it because start_motor() deliberately kickstarts at
+          // 600 (see wrapper), so the configured value must be replayed here.
+          // (#37, #25)
+          if (initial_reset_required_) {
             RCLCPP_INFO(this->get_logger(),
-                        "[FSM] Re-setting speed to fix RPM...");
+                        "[FSM] Applying configured motor speed (%d rpm)...",
+                        params_.rpm);
             driver_->set_motor_speed(params_.rpm);
             initial_reset_required_ = false;
           }
