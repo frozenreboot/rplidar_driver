@@ -2,29 +2,6 @@
 Changelog for package rplidar_driver
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
-* Corrected the ``max_distance`` documentation, which described the parameter
-  as a range clip. It only sets ``range_max`` on the published LaserScan;
-  measurements are not clipped, so ``ranges[]`` can hold values beyond it.
-  Consumers that honour ``range_max`` are unaffected, but those that ignore it
-  see the extra readings. Actual clipping is planned for a future release.
-* Fixed the driver never recovering from a latched device health error. A
-  device reporting ``SL_LIDAR_STATUS_ERROR`` keeps reporting it until reset,
-  but ``CHECK_HEALTH`` only disconnected and reconnected, so the FSM cycled
-  forever and no scan was ever published. The already-implemented
-  ``reset()`` is now sent once per connection attempt before falling back to
-  the reconnect path.
-* Added the ``symmetric_angle_range`` parameter to publish LaserScan angles
-  over ``[-pi, pi)`` instead of ``[0, 2*pi)``, matching sllidar_ros2 and the
-  bounds that ``laser_filters`` and similar nodes expect. Defaults to ``false``
-  to preserve existing behaviour; the symmetric range becomes unconditional and
-  the parameter is removed in the next major release.
-* Fixed angle normalization dropping out of range for ``angle_offset`` values
-  larger than a full turn.
-* Fixed the ``interpolated_rays`` ray grid being anchored at zero instead of at
-  ``angle_min``.
-
 1.4.1 (2026-07-18)
 ------------------
 * Fixed the Rolling build by passing the node by reference to
