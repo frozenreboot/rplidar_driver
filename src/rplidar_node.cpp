@@ -313,6 +313,7 @@ void RPlidarNode::init_parameters() {
   init_param("use_intensities", params_.use_intensities);
   init_param("intensities_as_angles", params_.intensities_as_angles);
   init_param("angle_offset", params_.angle_offset);
+  init_param("symmetric_angle_range", params_.symmetric_angle_range);
   init_param("qos_policy", params_.qos_policy);
 
   // Dynamic ones, don't forget to check them in the callback
@@ -471,11 +472,24 @@ void RPlidarNode::scan_loop() {
     case DriverState::CHECK_HEALTH: {
       int health = driver_->getHealth();
       if (health == 0 || health == 1) { // OK or Warning
+        health_reset_attempted_ = false;
         // Transition: CHECK_HEALTH -> WARMUP
         current_state_.store(DriverState::WARMUP);
+      } else if (!health_reset_attempted_) {
+        // A device that latches SL_LIDAR_STATUS_ERROR keeps reporting it until
+        // it is explicitly reset; reconnecting alone never clears the flag and
+        // leaves the FSM cycling forever. Try the reset once per connection,
+        // then fall through to the reconnect path if it did not help.
+        RCLCPP_WARN(this->get_logger(),
+                    "[FSM] Health error: %d. Sending device reset...", health);
+        health_reset_attempted_ = true;
+        driver_->reset();
+        std::this_thread::sleep_for(2000ms);
       } else {
         RCLCPP_ERROR(this->get_logger(),
-                     "[FSM] Health error: %d. Disconnecting...", health);
+                     "[FSM] Health error: %d after reset. Disconnecting...",
+                     health);
+        health_reset_attempted_ = false;
         driver_->disconnect();
         std::this_thread::sleep_for(1000ms);
 
@@ -530,10 +544,16 @@ void RPlidarNode::scan_loop() {
         if (driver_->grab_scan_data(nodes)) {
           success = true;
           error_count = 0;
-          // New devices require rpm setting after some scanning
-          if (is_new_protocol_ && initial_reset_required_) {
+          // Apply the user-configured motor speed once the first scan confirms
+          // the motor is spinning. New-type devices need this because the
+          // initial setMotorSpeed() in start_motor() doesn't always stick;
+          // A-series needs it because start_motor() deliberately kickstarts at
+          // 600 (see wrapper), so the configured value must be replayed here.
+          // (#37, #25)
+          if (initial_reset_required_) {
             RCLCPP_INFO(this->get_logger(),
-                        "[FSM] Re-setting speed to fix RPM...");
+                        "[FSM] Applying configured motor speed (%d rpm)...",
+                        params_.rpm);
             driver_->set_motor_speed(params_.rpm);
             initial_reset_required_ = false;
           }
@@ -793,10 +813,23 @@ void RPlidarNode::publish_scan(
     // The order is fully corrupted, so we need to sort them later.
 
     angle_rad += params_.angle_offset;
-    if (angle_rad >= TWO_PI)
-      angle_rad -= TWO_PI;
-    if (angle_rad < 0.0f)
-      angle_rad += TWO_PI;
+    // Loops rather than single comparisons: angle_offset is unbounded, so one
+    // correction is not always enough to land back inside the range.
+    // TEMPORARY: the asymmetric branch only exists to keep pre-existing
+    // deployments byte-identical. See Parameters::symmetric_angle_range; the
+    // whole conditional collapses into the symmetric case on the next major
+    // release.
+    if (params_.symmetric_angle_range) {
+      while (angle_rad >= M_PI)
+        angle_rad -= TWO_PI;
+      while (angle_rad < -M_PI)
+        angle_rad += TWO_PI;
+    } else {
+      while (angle_rad >= TWO_PI)
+        angle_rad -= TWO_PI;
+      while (angle_rad < 0.0)
+        angle_rad += TWO_PI;
+    }
 
     if (node.dist_mm_q2 == 0) {
       if (params_.interpolated_rays) {
@@ -861,8 +894,14 @@ void RPlidarNode::publish_scan(
   scan_msg.angle_increment =
       static_cast<float>(TWO_PI / static_cast<double>(beam_count));
   if (params_.interpolated_rays) {
-    scan_msg.angle_min = 0.f;
-    scan_msg.angle_max = scan_msg.angle_increment * beam_count;
+    // The interpolated grid is synthetic, so its origin has to be stated
+    // explicitly. The measured branch below needs no equivalent: its bounds
+    // come from the sorted samples and therefore follow whichever convention
+    // the normalization above produced.
+    scan_msg.angle_min =
+        params_.symmetric_angle_range ? -static_cast<float>(M_PI) : 0.f;
+    scan_msg.angle_max =
+        scan_msg.angle_min + scan_msg.angle_increment * beam_count;
   } else {
     scan_msg.angle_min = points[0].angle_rad;
     scan_msg.angle_max = points[beam_count - 1].angle_rad;
@@ -936,7 +975,9 @@ void RPlidarNode::publish_scan(
       return;
 
     for (int p = 1, r = 1; r < (beam_count - 1); r++) {
-      double target_angle = r * scan_msg.angle_increment;
+      // Anchored to angle_min, not to zero: the ray grid has to start wherever
+      // the published scan starts.
+      double target_angle = scan_msg.angle_min + r * scan_msg.angle_increment;
 
       // Find the segment [p-1, p] that contains target_angle
       // Check p < p_size-1 before incrementing p
