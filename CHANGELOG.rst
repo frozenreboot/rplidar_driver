@@ -2,6 +2,11 @@
 Changelog for package rplidar_driver
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* feat: Add standby mode - LIDAR motor stops without subscribers (`#42 <https://github.com/frozenreboot/rplidar_ros2_driver/issues/42>`_)
+* Contributors: Filip Szkudlarek, Błażej Sowa
+
 1.4.1 (2026-07-18)
 ------------------
 * Fixed the Rolling build by passing the node by reference to
