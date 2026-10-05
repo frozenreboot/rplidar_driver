@@ -4,8 +4,9 @@ Changelog for package rplidar_driver
 
 1.4.2 (2026-10-05)
 ------------------
+* fix: apply configured RPM on A-series startup (`#45 <https://github.com/frozenreboot/rplidar_ros2_driver/issues/45>`_)
 * feat: Add standby mode - LIDAR motor stops without subscribers (`#42 <https://github.com/frozenreboot/rplidar_ros2_driver/issues/42>`_)
-* Contributors: Filip Szkudlarek, Błażej Sowa
+* Contributors: Filip Szkudlarek, Błażej Sow, JWJ | frozenreboot
 
 1.4.1 (2026-07-18)
 ------------------
